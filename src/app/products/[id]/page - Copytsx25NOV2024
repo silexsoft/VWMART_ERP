@@ -1,0 +1,658 @@
+'use client';
+
+import 'bootstrap/dist/css/bootstrap.min.css';
+import { usePathname } from 'next/navigation'
+import React, { useEffect, useState } from 'react';
+import DefaultLayout from "@/components/Layouts/DefaultLayout";
+import { Modal, Button, Alert } from 'react-bootstrap';
+
+let Token = process.env.BACKEND_TOKEN;
+const ProductDetail = () => {
+  
+  const pathname = usePathname()
+  const id = pathname.match(/\/products\/(\d+)/)?.[1];
+  
+ 
+interface Warehouse {
+  id: number;
+  name: string;
+  inventory?: {
+    stock_quantity: number;
+    reserved_quantity: number;
+  };
+}
+
+// interface ProductInventory {
+//   product_id: number;
+//   warehouse_id: number;
+//   stock_quantity: number;
+//   reserved_quantity: number;
+//   use:boolean
+// }
+type ProductInventory = {
+  warehouse_id: number;
+  product_id: string;
+  stock_quantity: number;
+  reserved_quantity: number;
+  use: string; // Make sure this field is included if it's required in your type
+  [key: string]: string | number;
+};
+
+  //  const [inventory, setInventory] =  useState([]);
+  // const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [inventory, setInventory] = useState<ProductInventory[]>([]);
+
+
+  const [showModal, setShowModal] = useState(false);
+  const [showAlert, setShowAlert] = useState(false);
+
+  const handleOpenModal = () => setShowModal(true);
+  const handleCloseModal = () => setShowModal(false);
+
+
+  const [showInventoryModal, setShowInventoryModal] = useState(false);
+  const [showInventoryAlert, setShowInventoryAlert] = useState(false);
+
+  const handleOpenInventoryModal = () => setShowInventoryModal(true);
+  const handleCloseInventoryModal = () => setShowInventoryModal(false);
+
+
+
+
+
+  const [product, setProduct] = useState<any>({
+    id: '',
+    name: '',
+    sku: '',
+    short_description: '',
+    full_description: '',
+    published:false,
+    deleted:false
+  });
+  
+  
+  const [isLoading, setIsLoading] = useState(true);
+
+
+   // Handle input change
+   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setProduct((prevProduct: any) => ({
+      ...prevProduct,  // Spread the previous state
+      [name]: value   // Update the specific field
+    }));
+  };
+ 
+  
+  const handleWarehouseInventoryChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    warehouseId: number,
+    field: string
+  ) => {
+    const { value } = e.target;
+
+    setInventory((prevInventory) => {
+      const inventoryExists = prevInventory.some(
+        (inv) => inv.warehouse_id === warehouseId
+      );
+
+      if (inventoryExists) {
+        // Update the existing inventory record
+        return prevInventory.map((inv) =>
+          inv.warehouse_id === warehouseId
+            ? {
+                ...inv,
+                [field]: value, // Update with the new value
+              }
+            : inv
+        );
+      } else {
+        // Create a new inventory record if it doesn't exist
+        return [
+          ...prevInventory,
+          {
+            warehouse_id: warehouseId,            
+            stock_quantity: 0, // Make sure to provide a default value for required fields
+            reserved_quantity: 0,
+            use: 'default', // Provide default value for all required fields
+            [field]: value, // Add the dynamically updated field
+          } as ProductInventory, // Cast the object to ProductInventory
+        ];
+      }
+    });
+  };
+
+ useEffect(() => {
+  console.log("Updated inventory:", inventory);
+}, [inventory]);
+ 
+  const handleCheckboxChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, checked } = event.target;
+    setProduct((prevProduct: any
+    ) => ({
+      ...prevProduct,
+      [name]: checked,
+    }));
+  };
+
+
+ const  handleUpdate = async () => {
+  try 
+  {      
+    const response = await updateProduct(product);
+  } 
+  catch (error) 
+  {
+    console.error('Error updating product:', error);
+  }
+}
+
+
+ const  handleUpdateInventory = async () => {
+    try {
+    const response = await updateProductInventory(inventory);
+  } 
+  catch (error) {
+    console.error('Error updating product inventory:', error);
+  }
+}
+
+const updateProduct = async (productData: any) => {
+  try {     
+    handleOpenModal();
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_HOST}/api-backend/Product/Update`, {
+      method: 'PUT',
+      headers: {        
+        'Content-Type': 'application/json',   
+        accept: 'application/json',
+        Authorization:`${process.env.NEXT_PUBLIC_BACKEND_TOKEN}`,
+        
+      },        
+      body: JSON.stringify(productData),
+    });    
+    if (!response.ok) {
+      throw new Error(`Error: ${response.statusText}`);
+    }
+    const data = await response.json();
+   
+    return data; 
+  } 
+  catch (error) 
+  { }
+  finally {
+    
+  }  
+};
+ 
+
+
+const updateProductInventory = async (productInventories: any[]) => {
+  handleOpenInventoryModal();
+  for (const productInventory of productInventories) {
+    try {       
+      if(productInventory.stock_quantity === ""){
+        const responses = await fetch(`${process.env.NEXT_PUBLIC_API_HOST}/api-backend/ProductWarehouse/Delete/${productInventory.id}`, 
+          {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json',
+              accept: 'application/json',
+              Authorization:`${process.env.NEXT_PUBLIC_BACKEND_TOKEN}`,
+            },
+            body: JSON.stringify(productInventory),
+          });
+          if (!responses.ok) {
+            throw new Error(`Error: ${responses.statusText}`);
+          }
+      }
+
+
+      if (!productInventory.product_id) 
+        {        
+        const pathname = window.location.pathname;
+        const productIdMatch = pathname.match(/\/products\/(\d+)/);
+        if (productIdMatch) {          
+          productInventory.product_id = productIdMatch[1];
+          const responses = await fetch(`${process.env.NEXT_PUBLIC_API_HOST}/api-backend/ProductWarehouse/Create`, 
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                accept: 'application/json',
+                Authorization:`${process.env.NEXT_PUBLIC_BACKEND_TOKEN}`,
+              },
+              body: JSON.stringify(productInventory),
+            });
+            if (!responses.ok) {
+              throw new Error(`Error: ${responses.statusText}`);
+            }
+        }
+     }
+     else
+     {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_HOST}/api-backend/ProductWarehouse/Update`, 
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            accept: 'application/json',
+            Authorization:`${process.env.NEXT_PUBLIC_BACKEND_TOKEN}`,
+          },
+          body: JSON.stringify(productInventory),
+        });
+  
+        if (!response.ok) {
+          throw new Error(`Error: ${response.statusText}`);
+        }
+     }
+     
+       
+      //console.log("Inside loop :", JSON.stringify(productInventory));
+      
+      //const data = await response.json();s
+      //console.log("Updated product inventory:", data);
+    } catch (error) {
+      console.error("Failed to update product inventory:", error);
+    }
+  }
+};
+
+
+
+  useEffect(() => {   
+    const fetchProduct = async () => {
+      
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_HOST}/api-backend/Product/GetProductsByIds/${id}`, {
+          method: 'GET',
+          headers: {
+            accept: 'application/json',
+            Authorization:`${process.env.NEXT_PUBLIC_BACKEND_TOKEN}`, // Use your actual auth token
+          },
+        });
+        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+        const data = await response.json();
+        console.log("Fetched product:", data);
+        setProduct(data[0]);
+      } catch (error) {
+        console.error("Failed to fetch product:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+
+
+    const fetchProductsInventory = async () => {
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_HOST}/api-backend/ProductWarehouse/GetAllProductWarehouseInventoryRecords/${id}`, {
+          method: 'GET',
+          headers: {
+            accept: 'application/json',
+            Authorization:`${process.env.NEXT_PUBLIC_BACKEND_TOKEN}`,
+          },
+        });
+        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+        const data: ProductInventory[] = await response.json();
+       // const data = await response.json();
+        console.log("Fetched fetch product Inventory:", data);
+        setInventory(data);
+      } catch (error) {
+        console.error("Failed to fetch product Inventory:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+         
+      
+          
+    const fetchWarehouseNames = async () => {
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_HOST}/api-backend/Warehouse/GetAll`, {
+          method: 'GET',
+          headers: {
+            accept: 'application/json',
+            Authorization:`${process.env.NEXT_PUBLIC_BACKEND_TOKEN}`,
+          },
+        });
+        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+        const data: Warehouse[] = await response.json();
+     //   const data = await response.json();
+        console.log("Fetched fetch warehouse names:", data);
+        //Setwarehouse(data);
+        
+        setWarehouses(data || []); 
+      } catch (error) {
+        setWarehouses([]);
+        console.error("Failed to fetch warehouse names:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };     
+
+
+    
+
+    fetchProduct();
+    fetchProductsInventory();
+    fetchWarehouseNames();
+
+
+  }, []);
+
+
+    // Map inventory data to each warehouse
+    const warehousesWithInventory = warehouses.map((warehouse) => {
+      const matchingInventory = Array.isArray(inventory)
+        ? inventory.find(inv => inv.warehouse_id === warehouse.id)
+        : null;
+    
+      return {
+        ...warehouse,
+        inventory: matchingInventory ? {
+          stock_quantity: matchingInventory.stock_quantity,
+          reserved_quantity: matchingInventory.reserved_quantity,
+        } : {
+         // stock_quantity: 0,
+          //reserved_quantity: 0,
+        }
+      };
+    });
+
+    
+  if (isLoading) return (
+    <DefaultLayout>
+       <div>Loading...</div></DefaultLayout>);
+  return (
+    
+    <DefaultLayout>
+ 
+  
+<div className="grid grid-cols-1 gap-9 sm:grid-cols-2">
+
+  
+        <div className="flex flex-col gap-9">
+          {/* <!-- Input Fields --> */}
+          <div className="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark">
+            <div className="border-b border-stroke px-6.5 py-4 dark:border-strokedark">
+              <h3 className="font-medium text-black dark:text-white">
+                Product Details
+              </h3>
+            </div>
+            <div className="flex flex-col gap-5.5 p-6.5">
+              <div>
+                <label className="mb-3 block text-sm font-medium text-black dark:text-white">
+                  Name
+                </label>
+                <input
+                  value={product?.name}
+                  name="name" 
+                  type="text"
+                  onChange={handleInputChange}
+                  placeholder="Product Name"
+                  className="w-full rounded-lg border-[1.5px] border-stroke bg-transparent px-5 py-3 
+                  text-black outline-none transition focus:border-primary active:border-primary  
+                   dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
+                />
+              </div>
+
+              <div>
+                <label className="mb-3 block text-sm font-medium text-black dark:text-white">
+                 Product SKU
+                </label>
+                <input
+                  type="text"
+                  name="sku" 
+                  value={product?.sku}
+                  onChange={handleInputChange}
+                  placeholder="Active Input"
+                  className="w-full rounded-lg border-[1.5px] border-primary bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:bg-form-input dark:text-white"
+                />
+              </div>
+
+              <div className="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark">
+           
+            <div className="flex flex-col gap-5.5 p-6.5">
+            <div>
+      <label
+        htmlFor="published"
+        className="flex cursor-pointer select-none items-center"
+      >    <label className="mb-3 block text-sm font-medium text-black dark:text-white">
+      Published
+    </label>
+        <div className="relative">
+          <input
+            type="checkbox"
+            id="published"
+            name="published"
+            className="sr-only"
+            checked={product?.published} 
+            onChange={handleCheckboxChange}
+          />
+          <div className="block h-8 w-14 rounded-full bg-meta-9 dark:bg-[#5A616B]"></div>
+          <div
+            className={`absolute left-1 top-1 h-6 w-6 rounded-full bg-white transition ${
+              product?.published && "!right-1 !translate-x-full !bg-primary dark:!bg-white"
+            }`}
+          ></div>
+        </div>
+      </label>
+
+      <label
+        htmlFor="deleted"
+        className="flex cursor-pointer select-none items-center"
+      ><label className="mb-3 block text-sm font-medium text-black dark:text-white">
+      Deleted
+    </label>
+        <div className="relative">
+          <input
+            type="checkbox"
+            id="deleted"
+            name="deleted"
+            className="sr-only"
+            checked={product?.deleted} 
+            onChange={handleCheckboxChange}
+          />
+          <div className="block h-8 w-14 rounded-full bg-meta-9 dark:bg-[#5A616B]"></div>
+          <div
+            className={`absolute left-1 top-1 h-6 w-6 rounded-full bg-white transition ${
+              product?.deleted && "!right-1 !translate-x-full !bg-primary dark:!bg-white"
+            }`}
+          ></div>
+        </div>
+      </label>
+
+
+
+    </div>
+            </div>
+          </div>
+          </div>
+          </div>       
+
+        </div>
+
+        <div className="flex flex-col gap-9">
+          {/* <!-- Textarea Fields --> */}
+          <div className="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark">
+            <div className="border-b border-stroke px-6.5 py-4 dark:border-strokedark">
+              {/* <h3 className="font-medium text-black dark:text-white">
+                Textarea Fields
+              </h3> */}
+            </div>
+            <div className="flex flex-col gap-5.5 p-6.5">
+              <div>
+                <label className="mb-3 block text-sm font-medium text-black dark:text-white">
+                  Short Description
+                </label>
+                <textarea
+                  rows={6}
+                  name="short_description" 
+                  onChange={handleInputChange}
+                  value={product?.short_description}
+                  placeholder="Short Description"
+                  className="w-full rounded-lg border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
+                ></textarea>
+              </div>
+
+              <div>
+                <label className="mb-3 block text-sm font-medium text-black dark:text-white">
+                 Full Description
+                </label>
+                <textarea
+                  rows={6}
+                  name="full_description" 
+                  onChange={handleInputChange}
+                  value={product?.full_description}
+                  placeholder="Full Descrition"
+                  className="w-full rounded-lg border-[1.5px] border-primary bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:bg-form-input dark:text-white"
+                ></textarea>
+              </div>
+            </div>
+          </div>                    
+        </div>
+     </div>
+      <div id='productUpdateBtn'>
+          <button
+                   onClick={handleUpdate}
+                   className="inline-flex items-center justify-center gap-2.5 rounded-full bg-primary px-10 py-4 text-center font-medium text-white hover:bg-opacity-90"
+          >
+              Update 
+         </button>
+      </div>
+      <div className="flex flex-col gap-2 "> 
+        
+
+  <div className="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark"> 
+
+  <div className="border-b border-stroke px-6.5 py-4 dark:border-strokedark">
+ 
+  <table className="ProductInventoryTbl">
+     <thead>
+        <tr className="bg-gray-2 text-left dark:bg-meta-4">
+          <th>Warehouse</th>
+          <th>Use</th>
+          <th>Stock qty</th>
+          <th>Reserved qty</th>   
+        </tr>
+      </thead>
+      <tbody>
+        {isLoading ? (
+          <tr>
+            <td colSpan={5}>Loading...</td>
+          </tr>
+        ) : (
+          warehousesWithInventory.length > 0 ? (
+            warehousesWithInventory.map((warehouse) => (
+              <tr key={warehouse.id}>
+                <td>{warehouse.name}</td>
+                {/* <td>{warehouse.inventory.stock_quantity? "Yes":"No"}</td> */}
+                <td>  
+                    <input
+                            type="checkbox"
+                            name="stock_quantity"
+                            value={warehouse.inventory.stock_quantity}
+                            checked={Boolean(warehouse.inventory.stock_quantity)} // Dynamically set checked
+                            onChange={(e) => handleWarehouseInventoryChange(e, warehouse.id, 'stock_quantity')}
+                            placeholder="Fill Quantity"
+                            className="w-full rounded-lg border-[1.5px] border-primary bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:bg-form-input dark:text-white"
+                      />
+            
+                </td>
+                <td> 
+                <input
+                  type="text"
+                  name="stock_quantity" 
+                  value={warehouse.inventory.stock_quantity} 
+                  onChange={(e) => handleWarehouseInventoryChange(e, warehouse.id, 'stock_quantity')}
+                  placeholder="Fill Quantity"
+                  className="w-full rounded-lg border-[1.5px] border-primary bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:bg-form-input dark:text-white"
+                />
+                </td>
+                <td>
+                <input
+                  type="text"
+                  name="reserved_quantity" 
+                  value={warehouse.inventory.reserved_quantity}  
+                  onChange={(e) => handleWarehouseInventoryChange(e, warehouse.id, 'reserved_quantity')}
+                  placeholder="Fill Quantity"
+                  className="w-full rounded-lg border-[1.5px] border-primary bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:bg-form-input dark:text-white"
+                />
+                </td>     
+         
+              </tr>
+
+              
+            ))
+          ) : (
+            <tr>
+              <td colSpan={5}>No data available</td>
+            </tr>
+          )
+        )}
+      </tbody>
+    </table> 
+    </div>
+                <div id='InventoryUpatebtn'>    
+                  <button
+                          onClick={handleUpdateInventory}
+                          className="inline-flex items-center justify-center gap-2.5 rounded-full bg-primary px-10 py-4 text-center font-medium text-white hover:bg-opacity-90"
+                          > Inventory Update 
+                  </button>
+                </div>
+  </div>
+  </div>
+
+
+    <Modal show={showModal} onHide={handleCloseModal}>
+        <Modal.Header closeButton>
+          {/* <Modal.Title>Alert in Modal</Modal.Title> */}
+        </Modal.Header>
+        <Modal.Body>
+          {showAlert && (
+            <Alert variant="danger" onClose={() => setShowAlert(false)} dismissible>
+              {/* Product Updated Successfully ! */}
+            </Alert>
+          )}          Product Updated Successfully !
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={handleCloseModal}>
+            Close
+          </Button>      
+        </Modal.Footer>
+      </Modal>
+
+
+ 
+
+      <Modal show={showInventoryModal} onHide={handleCloseInventoryModal}>
+        <Modal.Header closeButton>
+          {/* <Modal.Title>Alert in Modal</Modal.Title> */}
+        </Modal.Header>
+        <Modal.Body>
+          {showAlert && (
+            <Alert variant="danger" onClose={() => setShowInventoryAlert(false)} dismissible>
+              {/* Product Updated Successfully ! */}
+            </Alert>
+          )}    
+               Product Inventory Updated Successfully !
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={handleCloseInventoryModal}>
+            Close
+          </Button>      
+        </Modal.Footer> 
+      </Modal>
+
+
+    </DefaultLayout>
+    
+  );
+};
+
+
+
+
+export default ProductDetail;

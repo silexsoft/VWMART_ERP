@@ -1,0 +1,171 @@
+'use client';
+import React, { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation'
+import DefaultLayout from "@/components/Layouts/DefaultLayout";
+
+const OrderDetail = () => {
+
+    
+    const pathname = usePathname()
+  const id = pathname.match(/\/Orders\/(\d+)/)?.[1];
+  
+
+    const [order, setOrder] = useState<any>({
+        id: '',
+        order_total: '',
+        order_status_id:'',
+        payment_status_id:'',
+      });
+
+
+      const [selectedStatus, setSelectedStatus] = useState(order.order_status_id);
+    const handleOrderStatusChange = (event:any) => {
+        setSelectedStatus(event.target.value);
+        order.order_status_id = event.target.value;
+      };
+
+const [isLoading, setIsLoading] = useState(true);
+
+
+const orderStatusMap: Record<number, string> = {
+    10: "Packing Pending",
+    12: "Invoicing Pending",
+    15: "Pickup Pending",
+    20: "In Transit",
+    30: "Completed",
+    40: "Cancelled"
+  };
+  
+  const paymentStatusMap: Record<number, string> = {
+    10: "Pending",
+    20: "Authorized",
+    30: "Paid",
+    35: "PartiallyRefunded",
+    40: "Refunded",
+    50: "Voided"
+  };
+
+  useEffect(() => {
+    
+    const fetchOrder = async () => {
+      
+        try {
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_HOST}/api-backend/Order/GetById/${id}`, {
+            method: 'GET',
+            headers: {
+              accept: 'application/json',
+              Authorization:`${process.env.NEXT_PUBLIC_BACKEND_TOKEN}`, // Use your actual auth token
+            },
+          });
+          if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+          const data = await response.json();
+          console.log("Fetched order:", data);
+          setOrder(data);
+       } catch (error) {
+          console.error("Failed to fetch order:", error);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      fetchOrder();
+
+  }, []);
+
+  if (isLoading) return (
+    <DefaultLayout>
+       <div>Loading...</div></DefaultLayout>);
+    return(    
+        <DefaultLayout>
+        <div className="grid grid-cols-1 gap-9 sm:grid-cols-2">
+                  
+          <div className="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark">
+            <div className="border-b border-stroke px-6.5 py-4 dark:border-strokedark">
+              <h3 className="font-medium text-black dark:text-white">
+                Order Details
+              </h3>
+            </div>
+            <div className="flex flex-col gap-6 p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md">
+                <div className="flex items-center gap-2">
+                        <span className="text-xl text-blue-500 font-semibold">#</span>
+                                 <label className="text-sm font-medium text-gray-800 dark:text-white">
+                                    Order Number  : 
+                                    <span className="text-lg font-semibold text-black dark:text-gray-100">
+                                     {order?.id ? order.id : "No order found"}
+                                 </span>
+                                </label>
+               </div>
+               
+               <div className="flex items-center gap-2">                        
+                                 <label className="text-sm font-medium text-gray-800 dark:text-white">
+                                    Order Total  : 
+                                    <span className="text-lg font-semibold text-black dark:text-gray-100">
+                                     {order?.order_total}
+                                 </span>
+                                </label>
+               </div>   
+
+               <div className="flex items-center gap-2">                        
+                                 <label className="text-sm font-medium text-gray-800 dark:text-white">
+                                    Order Status  : 
+                                 <span className="text-lg font-semibold text-black dark:text-gray-100">
+                                    {/* {order && order.order_status_id ? orderStatusMap[Number(order.order_status_id)] || "Unknown Status" : "Unknown Status"} */}
+                                  <select value={order.order_status_id} 
+                                  
+                                  onChange={handleOrderStatusChange}
+                                  style=
+                                  {{
+                                         padding: "8px",
+                                         fontSize: "16px",
+                                         borderRadius: "4px",
+                                        border: "1px solid #ccc",
+                                        backgroundColor: "#f9f9f9",
+                                        color: "#333",
+                                        cursor: "pointer",
+                                    }}>
+                                     
+                                    <option value="10">Packing Pending</option>
+                                    <option value="12">Invoicing Pending</option>
+                                    <option value="15">Pickup Pending</option>
+                                    <option value="20">In Transit</option>
+                                    <option value="30">Completed</option>
+                                    <option value="40">Cancelled</option>
+                                  </select>
+                                 </span>                               
+
+                                </label>
+                                <button                   
+                                    className="inline-flex items-center justify-center gap-2.5 rounded-full bg-primary px-10 py-4 text-center font-medium text-white hover:bg-opacity-90"
+                                >
+                                    Change Status
+                                </button>
+                </div>  
+
+
+               <div className="flex items-center gap-2">                        
+                                 <label className="text-sm font-medium text-gray-800 dark:text-white">
+                                    Payment Status  : 
+                                    <span className="text-lg font-semibold text-black dark:text-gray-100">
+                                    {order && order.payment_status_id ? paymentStatusMap[Number(order.payment_status_id)] || "Unknown Status" : "Unknown Status"
+                                     }
+                                 </span>
+                                </label>
+               </div>   
+            </div>
+
+
+
+              
+
+            </div>
+          
+         
+
+        
+        
+
+        </div>
+        </DefaultLayout>
+        );        
+};
+export default OrderDetail; 

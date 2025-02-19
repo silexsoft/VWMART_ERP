@@ -1,0 +1,52 @@
+/* Table Styles */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: var(--bg-color, #ffffff);
+  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Header Row */
+.headerRow {
+  background-color: var(--header-bg-color, #f4f4f9);
+  color: var(--header-text-color, #333333);
+  font-weight: bold;
+}
+
+.header {
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color, #dddddd);
+}
+
+/* Body Rows */
+.table tr {
+  transition: background-color 0.3s ease;
+}
+
+.table tr:hover {
+  background-color: var(--row-hover-bg, #fafafa);
+}
+
+.table td {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border-color, #dddddd);
+  color: var(--text-color, #333333);
+}
+
+/* Dark Theme Overrides */
+.dark-mode .table {
+  background-color: var(--dark-bg-color, #1e1e2d);
+  color: var(--dark-text-color, #e4e4e9);
+  border-color: var(--dark-border-color, #2c2c3d);
+}
+
+.dark-mode .headerRow {
+  background-color: var(--dark-header-bg-color, #2b2b3d);
+}
+
+.dark-mode .table td {
+  border-color: var(--dark-border-color, #2c2c3d);
+}

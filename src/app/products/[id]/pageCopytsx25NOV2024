@@ -1,0 +1,63 @@
+// src/app/products/page.tsx
+
+import ProductsTable from "@/components/ProductsTable";
+import React from "react";
+import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
+import DefaultLayout from "@/components/Layouts/DefaultLayout";
+
+const ProductsPage = async () => {
+  let products = [];
+
+  try {
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_API_HOST}/api-backend/Product/GetAll?pageIndex=0&pageSize=10&storeId=0&vendorId=0&warehouseId=0&visibleIndividuallyOnly=false&excludeFeaturedProducts=false&productTagId=0&searchDescriptions=false&searchManufacturerPartNumber=true&searchSku=true&searchProductTags=false&languageId=0&showHidden=false`,
+      {
+        method: 'GET',
+        headers: {
+          accept: 'application/json',
+          Authorization: `${process.env.NEXT_PUBLIC_BACKEND_TOKEN}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! Status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+
+    // Ensure data.items is defined and is an array
+    products = Array.isArray(data.items)
+      ? data.items.map((product: any) => ({
+          id: product.id,
+          name: product.name,
+          sku: product.sku,
+          published: product.published,
+          deleted: product.deleted,
+        }))
+      : [];
+  } catch (error) {
+    console.error("Failed to fetch products:", error);
+  }
+
+  // Render ProductsTable with products
+  // return <
+  
+  // ProductsTable products={products} /
+  
+  
+  // >;
+  return (
+    <DefaultLayout>
+      <Breadcrumb pageName="Tables" />
+
+      <div className="flex flex-col gap-10">
+       
+        <ProductsTable products={products} />
+        
+      </div>
+    </DefaultLayout>
+  );
+};
+
+export default ProductsPage;

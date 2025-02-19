@@ -1,0 +1,59 @@
+import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
+import DefaultLayout from "@/components/Layouts/DefaultLayout";
+import OrdersTable from "@/components/OrdersTable";
+
+
+const ordersPage = async () => {
+    let orders=[];
+    try{
+        const response = await fetch
+        (
+        `${process.env.NEXT_PUBLIC_API_HOST}/api-backend/Order/Search?storeId=0&vendorId=0&customerId=0
+          &productId=0&affiliateId=0&warehouseId=0&billingCountryId=0&pageIndex=0&pageSize=10
+          &getOnlyTotalCount=false`,
+            {
+                  method: 'GET',
+                  headers: {
+                  accept: 'application/json',
+                   Authorization: `${process.env.NEXT_PUBLIC_BACKEND_TOKEN}`,
+                 },
+            }
+        );
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+          }          
+          const data = await response.json();
+          console.log("Fetched orders:", data);
+
+
+          orders = Array.isArray(data.items)
+          ? data.items.map((order: any) => ({
+              id: order.id,
+              order_status_id: order.order_status_id,
+              payment_status_id: order.payment_status_id,
+              order_total: order.order_total,
+              created_on_utc: order.created_on_utc,
+              customer_email: order.customer_email,
+            }))
+          : [];
+
+
+    }
+    catch(error){
+
+    }
+
+
+    return (
+        <DefaultLayout>
+                        <Breadcrumb pageName="Tables" />
+                            <div className="flex flex-col gap-10">
+                                  <OrdersTable    
+                                    orders={orders} />   
+                            </div>
+        </DefaultLayout>
+      );
+};
+
+
+export default ordersPage;

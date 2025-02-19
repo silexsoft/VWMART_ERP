@@ -1,0 +1,200 @@
+'use client';
+
+import 'bootstrap/dist/css/bootstrap.min.css';
+import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { motion } from "framer-motion";
+import { useAuth } from "@/app/context/AuthContext";
+interface Brand {
+    id: string;
+    name: string;
+    image_url: string;
+    description: string;
+    parent_manufacturer_name: string;
+  }
+
+
+interface BrandTableProps {
+    brand: Brand[];
+    currentPage:number;
+    totalBrands:number;
+  }
+ 
+
+  
+const BrandTable: React.FC<BrandTableProps> = ({ brand ,totalBrands ,currentPage  }) => {
+    const router = useRouter();    
+    
+  const [selectedItems, setSelectedItems] = useState<string[]>([]);  
+  const [showInventoryModal, setShowInventoryModal] = useState(false);
+  const handleOpenInventoryModal = () => setShowInventoryModal(true);
+
+    if (!brand) {
+      return <div>Loading...</div>; // Change "wait" to a more descriptive message
+    }
+    const { token, logout } = useAuth();
+    const  DeleteManufacturer = async () => {
+      try {
+      const response = await DeleteManufacturerApi(selectedItems);
+    } 
+    catch (error) {
+      console.error('Error updating product inventory:', error);
+    }
+  }
+  
+    const toggleSelect = (productId:any) => {
+      setSelectedItems((prev:any) =>
+        prev.includes(productId)
+          ? prev.filter((id:any) => id !== productId)
+          : [...prev, productId]
+      );
+    };
+
+
+    const DeleteManufacturerApi = async (selectedItems: any[]) => {
+      handleOpenInventoryModal();
+      console.log("Delete ids"+  JSON.stringify(selectedItems));
+       try
+       {
+               for(const deleteitem of selectedItems)
+                {
+                  try{ const responses = await fetch(`${process.env.NEXT_PUBLIC_API_HOST}/api-backend/manufacturer/Delete/${deleteitem}`, 
+                    {
+                      method: 'DELETE',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        accept: 'application/json',
+                        Authorization:token ? `Bearer ${token}` : '',
+                      },                  
+                    });
+                    if (!responses.ok) {
+                      throw new Error(`Error: ${responses.statusText}`);
+                    }
+                    location.reload();
+                  }catch{}
+                }
+       }
+       catch
+       { }    
+    };
+
+  const handleSelectAll = () => {
+    if (selectedItems.length === brand.length) {
+      setSelectedItems([]); // Deselect all
+
+      alert(selectedItems.length);
+    } else {
+      //setSelectedItems(products.map((product) => product.id)); // Select all
+    }
+  };
+
+    return (      
+<div className="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark">
+  <div className="px-4 py-6 md:px-6 xl:px-7.5">
+    {/* <h4 className="text-xl font-semibold text-black dark:text-white">
+      All Orders
+    </h4>
+    <h4  className="text-xl font-semibold text-black" style={{ marginTop: "-21px",float: "right" }}>
+            Total : {totalCategories}
+        </h4> */}
+  </div>
+  <div className="row">
+    <div className="col-md-12">
+
+    {selectedItems.length > 0 && (
+        <motion.div
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: "auto", opacity: 1 }}
+          exit={{ height: 0, opacity: 0 }}
+          className="bg-gray-100 p-4 mt-4"
+        >
+          <div className="flex items-center justify-between">
+            <p>{selectedItems.length} items selected</p>
+            <button
+              onClick={DeleteManufacturer}
+              className="bg-red-500 text-white px-4 py-2 rounded"
+            >
+              Delete
+            </button>
+          </div>
+        </motion.div>
+      )}
+
+    <table className="table-auto border-collapse" style={{ width: '40%' }}>
+      <thead>
+        <tr className="border-t border-stroke dark:border-strokedark">
+        <th className="px-4 py-2 text-left text-sm font-medium text-black dark:text-white" style={{ width: '10%' }}>
+          <input
+                type="checkbox"
+                onChange={handleSelectAll}
+                checked={selectedItems.length === brand.length}
+              />
+          </th>
+          <th className="px-4 py-2 text-left text-sm font-medium text-black dark:text-white">
+            #
+          </th>
+          <th className="px-4 py-2 text-left text-sm font-medium text-black dark:text-white">
+            Image
+          </th>
+          <th className="px-4 py-2 text-left text-sm font-medium text-black dark:text-white">
+            Name
+          </th>
+          <th className="px-4 py-2 text-left text-sm font-medium text-black dark:text-white">
+            Code
+          </th>
+          <th className="px-4 py-2 text-left text-sm font-medium text-black dark:text-white">
+            Description
+          </th>
+          <th className="px-4 py-2 text-left text-sm font-medium text-black dark:text-white">
+            Parent Category
+          </th>          
+        </tr>
+      </thead>
+      <tbody>
+        {brand.map((brands, key) => (
+          <tr
+            key={key}
+            className="border-t border-stroke dark:border-strokedark hover:bg-gray-50 dark:hover:bg-gray-800"
+          >
+            <td className="px-4 py-2 text-sm text-black dark:text-white" style={{ width: '10%' }}>
+            <input
+                  type="checkbox"
+                  checked={selectedItems.includes(brands.id)}
+                  onChange={() => toggleSelect(brands.id)}
+                />
+            </td>
+            <td className="px-4 py-2 text-sm text-black dark:text-white">
+            {(Number(currentPage)) * 25 + key + 1}
+            </td>
+            <td className="px-4 py-2 text-sm text-meta-3">              
+            <button                 
+                  className="text-blue-500 hover:underline"
+                >
+                  <img
+                  src={brands.image_url || '/default-image.jpg'}
+                  alt={`Product ${brands.image_url}`}
+                  style={{ width: '100px' }}
+                />
+            </button>              
+            </td>
+            <td className="px-4 py-2 text-sm text-black dark:text-white">
+              {brands.name}
+            </td>
+            <td className="px-4 py-2 text-sm text-black dark:text-white">              
+            </td>         
+            <td className="px-4 py-2 text-sm text-black dark:text-white">
+             {brands.description}    
+            </td>
+            <td className="px-4 py-2 text-sm text-black dark:text-white">
+            {brands.parent_manufacturer_name}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+    </div>
+  </div>
+</div>
+    );  
+  };     
+  export default BrandTable; 

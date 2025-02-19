@@ -1,0 +1,99 @@
+import React, { useEffect, useState, useRef } from "react";
+
+const Map = ({
+  address,
+  setCordsWrapper,
+  setModifiedAddrssWrapper,
+  setModifiedAddrsObjWrapper,
+  geoCords,
+  searchInputRef,
+}) => {
+  const [isLoaded, setIsLoaded] = useState(false);
+  const mapRef = useRef(null); // Reference to store map instance
+  const markerRef = useRef(null); // Reference to store marker instance
+
+  // ✅ Load Google Maps API only once
+  useEffect(() => {
+    if (window.google && window.google.maps) {
+      setIsLoaded(true);
+      return;
+    }
+
+    const existingScript = document.querySelector(
+      'script[src^="https://maps.googleapis.com/maps/api/js"]',
+    );
+
+    if (!existingScript) {
+      const script = document.createElement("script");
+      script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyBzVxMnYB0bervnV8js-3Z1pWxTvoq1EDo&libraries=places`;
+      script.async = true;
+      script.defer = true;
+      script.setAttribute("loading", "async");
+      script.onload = () => setIsLoaded(true);
+      document.body.appendChild(script);
+    } else {
+      existingScript.onload = () => setIsLoaded(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isLoaded || !geoCords || geoCords.length !== 2) return;
+
+    // Map options
+    const mapOptions = {
+      center: new window.google.maps.LatLng(geoCords[0], geoCords[1]),
+      zoom: 15,
+    };
+
+    // Initialize Map
+    mapRef.current = new window.google.maps.Map(
+      document.getElementById("map"),
+      mapOptions,
+    );
+
+    // Initialize Marker
+    markerRef.current = new window.google.maps.Marker({
+      position: new window.google.maps.LatLng(geoCords[0], geoCords[1]),
+      map: mapRef.current,
+      draggable: true,
+    });
+
+    // Add drag event listener
+    markerRef.current.addListener("dragend", () => {
+      const newPosition = markerRef.current.getPosition();
+      setCordsWrapper([newPosition.lat(), newPosition.lng()]);
+    });
+
+    // Initialize Autocomplete
+    const input = document.getElementById("pac-input");
+    if (input) {
+      const autocomplete = new window.google.maps.places.Autocomplete(input);
+      autocomplete.bindTo("bounds", mapRef.current);
+
+      autocomplete.addListener("place_changed", () => {
+        const place = autocomplete.getPlace();
+        if (!place.geometry || !place.geometry.location) return;
+        markerRef.current.setPosition(place.geometry.location);
+        mapRef.current.setCenter(place.geometry.location);
+        setModifiedAddrsObjWrapper(place);
+      });
+    }
+  }, [isLoaded, geoCords]);
+
+  return (
+    <>
+      <div>
+        <input
+          id="pac-input"
+          className="controls"
+          type="text"
+          placeholder="Search Box"
+          ref={searchInputRef}
+        />
+      </div>
+      <div id="map" style={{ height: "400px", width: "100%" }}></div>
+    </>
+  );
+};
+
+export default Map;
