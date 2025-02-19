@@ -4,6 +4,7 @@ import React, { useState, ReactNode } from "react";
 import Sidebar from "@/components/Sidebar/pos";
 import Header from "@/components/Header/posheader";
 import "@/css/custom.css";
+import "@/css/pos.css";
 
 export default function PosLayout({
     children,

@@ -1,0 +1,213 @@
+ /******************************************CSS BY SHIKHA START***********************************/
+ .pos-left {
+     width: 80%;
+     float: left;
+ }
+
+ .pos-right {
+     width: 19%;
+     float: right;
+ }
+
+ .right-sidebar {
+     border-top: 1px solid #ddd;
+     border-bottom: 1px solid #ddd;
+     height: calc(100% - 16px);
+     border-radius: 5px
+ }
+
+ .right-top {
+     border: 1px solid #ddd;
+     border-radius: 5px
+ }
+
+ .sidebar-widget ul {
+     list-style: none;
+     float: left;
+     width: 100%;
+     border-radius: 5px
+ }
+
+ .sidebar-widget ul li {
+     float: left;
+     width: 33.33%;
+     display: table;
+     height: 65px
+ }
+
+ .sidebar-widget ul li:nth-child(odd) {
+     background-color: #f7f7f7;
+ }
+
+ .sidebar-widget ul li a {
+     color: #000;
+     display: table-cell;
+     vertical-align: middle;
+     font-size: 11px
+ }
+
+ .sidebar-widget ul li a:hover {
+     text-decoration: none
+ }
+
+ .sidebar-widget ul li a i {
+     display: block;
+     color: #666;
+     margin-bottom: 5px;
+     font-size: 18px
+ }
+
+ .searchlistbox {
+     background-color: #fff;
+     border-radius: 10px;
+     border: 1px solid #dbdbdb;
+     position: absolute;
+     z-index: 2;
+ }
+
+ .searchlistbox ul li:hover {
+     cursor: pointer
+ }
+
+ div#salesbtndiv button {
+     margin-bottom: 6px;
+     min-width: 15%;
+ }
+
+ #salesbtndiv .btn {
+     font-size: 12.5px !important;
+ }
+
+ div#salesbtndiv button {
+     min-height: 40px;
+ }
+
+ .footer-button button {
+     margin-right: .25%;
+     margin-left: .25%;
+ }
+
+ .row.pos-left-middle {
+     padding-bottom: 50px;
+ }
+
+ .row.pos-left-middle {
+     height: calc(100vh - 280px);
+     overflow: auto;
+ }
+
+ .pos-left-bottom-fixed {
+     position: fixed;
+     bottom: 0px;
+     width: calc(83.3333% - 54px);
+     z-index: 999;
+
+ }
+
+ .footer-button button {
+     margin-right: .25%;
+     margin-left: .25%;
+ }
+
+ .btn-dark {
+     color: #fff;
+     background-color: #343a40;
+     border-color: #343a40;
+ }
+
+ .right-sidebarpopup {
+     position: fixed;
+     top: 0;
+     right: -300px;
+     width: 300px;
+     height: 100%;
+     background: white;
+     box-shadow: -3px 0px 5px rgba(0, 0, 0, 0.2);
+     transition: right 0.3s ease-in-out;
+     z-index: 1000;
+ }
+
+ .right-sidebarpopup.open {
+     right: 0;
+ }
+
+ .close-btn {
+     position: absolute;
+     top: 10px;
+     right: 10px;
+     background: red;
+     color: white;
+     border: none;
+     padding: 5px 10px;
+     cursor: pointer;
+ }
+
+ /***************************CSS BY SHIKHA END************************************/
+ /***************************CSS BY BUNTY START************************************/
+ .calculator {
+     margin: 0 auto;
+     padding: 20px;
+     background-color: #F9F9F9;
+     border-radius: 10px;
+     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+ }
+
+ .calculator input[type="text"] {
+     width: 100%;
+     padding: 10px;
+     margin-bottom: 10px;
+     font-size: 24px;
+     text-align: right;
+     border: none;
+     border-bottom: 1px solid #ccc;
+     outline: none;
+     background-color: #fff;
+ }
+
+ .calculator .buttons {
+     display: grid;
+     grid-template-columns: repeat(4, 1fr);
+     gap: 10px;
+ }
+
+ .calculator button {
+     padding: 15px;
+     font-size: 20px;
+     border: none;
+     outline: none;
+     cursor: pointer;
+     border-radius: 5px;
+     background-color: #F0F0F0;
+ }
+
+ .calculator button:hover,
+ .calculator button.operator:hover {
+     background-color: #E0E0E0;
+ }
+
+ .calculator button.operator {
+     font-size: 1.5rem;
+     font-weight: bold;
+     background-color: #F0F0F0;
+     color: #F0A500;
+ }
+
+ .calculator button.wide {
+     grid-column: span 2;
+ }
+
+ .calculator button.clear {
+     grid-column: span 2;
+     background-color: #F0A500;
+     color: white;
+ }
+
+ .calculator button.clear:hover {
+     background-color: #D18D00;
+ }
+
+ .calculator button.wide {
+     grid-column: span 2;
+ }
+
+ /***************************CSS BY BUNTY End************************************/
