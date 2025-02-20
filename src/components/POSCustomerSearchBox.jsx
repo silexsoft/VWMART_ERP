@@ -39,6 +39,7 @@ const POSCustomerSearchBox = ({ setSelectedCustomer }) =>
     const addCustomer = (customer) =>
     {
         setCustomerId(customer.id);
+        setSelectedCustomer(customer.id);
         setCustomers([]);
         setSearchTerm(customer.first_name + " " + customer.last_name + " - " + customer.phone);
     };
