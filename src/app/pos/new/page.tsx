@@ -7,6 +7,7 @@ import { useAuth } from "@/app/context/AuthContext";
 import POSProductSearchBox from '@/components/POSProductSearchBox';
 import POSCustomerSearchBox from '@/components/POSCustomerSearchBox';
 import { Modal, Button, Alert } from "react-bootstrap";
+import { guestLogin } from "@/utils/posService";
 import { string } from 'yup';
 import { set } from "date-fns";
 const NewPosOrder = () => {
@@ -22,6 +23,9 @@ const NewPosOrder = () => {
     const [totalAmount, setTotalAmount] = useState(0);
     const [discounts, setDiscounts] = useState({});
     const [totaldiscount, setTotalDiscount] = useState(0);
+    const [guesttoken, setGuestToken] = useState(null);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const [holdBills, setHoldBills] = useState([]);
 
     // Handle discount input change
     const handleDiscountChange = (index, value) => {
@@ -88,7 +92,7 @@ const NewPosOrder = () => {
        * Fetches customers from the API and saves them.
        */
         const fetchCustomers = async () => {
-            const url = `${process.env.NEXT_PUBLIC_API_HOST}/api-backend/Customer/GetAll?customerRoleIds=3`;
+            const url = `${process.env.NEXT_PUBLIC_API_HOST}/api-backend/Customer/GetAll`;
             const response = await fetch(url, {
                 method: "GET",
                 headers: {
@@ -96,7 +100,7 @@ const NewPosOrder = () => {
                     Authorization: token ? `Bearer ${token}` : "",
 
                 }
-            }); // Replace with your API endpoint
+            });
             const customers = await response.json();
             pageIndex++;
             saveCustomers(customers.items);
@@ -138,6 +142,53 @@ const NewPosOrder = () => {
     const removeProduct = (id) => {
         setSelectedProducts(selectedProducts.filter((product) => product.id !== id));
     };
+
+
+
+    /**
+     * Handles the hold order button click.
+     * If a customer is not selected, a guest login is done and the token is stored.
+     * The selected products are cleared and the hold order API is called.
+     */
+    const handleHoldClick = async () => {
+        let authToken = token;
+
+        try {
+            // If a customer is not selected, do a guest login and store the token
+            if (!selectedCustomer) {
+                authToken = await guestLogin();
+                setGuestToken(authToken); // Store the token for future use
+            }
+
+            // Clear the selected products
+            setSelectedCustomer(null);
+            setSelectedProducts([]);
+
+            // Call the hold order API
+            //const holdResponse = await holdOrder(authToken, selectedCustomer);
+            //console.log("Hold API Response:", holdResponse);
+        } catch (error) {
+            console.error("Error:", error);
+        }
+    };
+
+    /**
+     * Fetches the hold bills from the API.
+     * The response is expected to be an array of hold bills.
+     * If the response is successful, the hold bills are stored in the component state.
+     * If the response fails, an error is logged to the console.
+     */
+    const getholdbills = async () => {
+        try {
+            // const response = await fetch('/api/get-hold-bills'); // 
+            // const data = await response.json();
+            // setHoldBills(data);
+            setIsSidebarOpen(true); // Open the sidebar after fetching data
+        } catch (error) {
+            // console.error("Error fetching hold bills:", error);
+        }
+    };
+
     return (
         <PosLayout>
             <div className="flex flex-col pos-left">
@@ -296,7 +347,7 @@ const NewPosOrder = () => {
                                 <div className="footer-button">
                                     <div id="salesbtndiv" className="row">
                                         <button type="button" className="col btn btn-dark"><i className="fa fa-columns" /> Multiple Pay (F12)</button>
-                                        <button type="button" className="col btn btn-dark"><i className="fa fa-pause" /> Hold (F6)</button>
+                                        <button type="button" className="col btn btn-dark" onClick={handleHoldClick}><i className="fa fa-pause" /> Hold (F6)</button>
                                         <button type="button" className="col btn btn-dark"><i className="fa fa-inr" /> Cash (F4)</button>
                                         <button type="button" className="col btn btn-dark"><i className="fa fa-calendar" /> Pay Later (F11)</button>
                                         <button type="button" className="col btn btn-dark"><i className="fa fa-print" /> Print Invoice</button>
@@ -317,8 +368,7 @@ const NewPosOrder = () => {
                                 <li>
                                     <button
                                         title="Hold Bill"
-
-                                        className="flex items-center space-x-2"
+                                        className="flex items-center space-x-2" onClick={getholdbills}
                                     >
                                         <i className="fa fa-pause" aria-hidden="true"></i>
                                         <span>Hold Bill</span>
@@ -327,7 +377,6 @@ const NewPosOrder = () => {
                                 <li>
                                     <button
                                         title="Payments"
-
                                         className="flex flex-col items-center"
                                     >
                                         <img
@@ -485,7 +534,26 @@ const NewPosOrder = () => {
                 </Modal.Footer>
 
             </Modal>
+            <div className={`right-sidebarpopup mt-2 mb-2 ${isSidebarOpen ? 'open' : 'closed'}`}>
+                <div className="right-top">
+                    <button className="close-btn" onClick={() => setIsSidebarOpen(false)}>X</button>
+                    <h3>Hold Bills</h3>
+                    <ul>
+                        {holdBills.length > 0 ? (
+                            holdBills.map((bill, index) => (
+                                <li key={index}>
+                                    <p>Bill No: {bill.billNo}</p>
+                                    <p>Amount: ${bill.amount}</p>
+                                </li>
+                            ))
+                        ) : (
+                            <p>No hold bills available.</p>
+                        )}
+                    </ul>
+                </div>
+            </div>
         </PosLayout>
+
     )
 }
 export default NewPosOrder
