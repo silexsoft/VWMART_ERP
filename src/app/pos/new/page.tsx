@@ -7,9 +7,8 @@ import { useAuth } from "@/app/context/AuthContext";
 import POSProductSearchBox from '@/components/POSProductSearchBox';
 import POSCustomerSearchBox from '@/components/POSCustomerSearchBox';
 import { Modal, Button, Alert } from "react-bootstrap";
-import { guestLogin } from "@/utils/posService";
-import { string } from 'yup';
-import { set } from "date-fns";
+import { guestLogin, holdOrder, getholdbills } from "@/utils/posService";
+
 const NewPosOrder = () => {
     const { token, logout, warehouseId } = useAuth();
     const [selectedProducts, setSelectedProducts] = useState([]);
@@ -21,17 +20,32 @@ const NewPosOrder = () => {
     const [totalQuantity, setTotalQuantity] = useState(0);
     const [totalMRP, setTotalMRP] = useState(0);
     const [totalAmount, setTotalAmount] = useState(0);
-    const [discounts, setDiscounts] = useState({});
+    // const [discounts, setDiscounts] = useState({});
+    const [discounts, setDiscounts] = useState(() => new Array(selectedProducts.length).fill(0));
+
     const [totaldiscount, setTotalDiscount] = useState(0);
     const [guesttoken, setGuestToken] = useState(null);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [holdBills, setHoldBills] = useState([]);
+    const [discountType, setDiscountType] = useState("amount");
 
-    // Handle discount input change
     const handleDiscountChange = (index, value) => {
-        const updatedDiscounts = { ...discounts, [index]: value };
-        setDiscounts(updatedDiscounts);
-        setTotalDiscount(Object.values(updatedDiscounts).reduce((a, b) => a + b, 0));
+        setDiscounts((prevDiscounts = []) => {
+            if (!selectedProducts[index]) return prevDiscounts;
+
+            let updatedDiscounts = [...prevDiscounts];
+
+            let discountValue = parseFloat(value) || 0;
+            if (discountType === "percentage") {
+                discountValue = Math.min(100, Math.max(0, discountValue)); // Ensure valid %
+                updatedDiscounts[index] = discountValue; // Store percentage, not amount
+            } else {
+                updatedDiscounts[index] = discountValue; // Store amount directly
+            }
+
+            return updatedDiscounts;
+        });
+
         calculateTotals();
     };
 
@@ -83,6 +97,7 @@ const NewPosOrder = () => {
                     Authorization: token ? `Bearer ${token}` : "",
                 },
             });
+
             const products = await response.json();
             pageIndex++;
             saveProducts(products.items);
@@ -114,25 +129,39 @@ const NewPosOrder = () => {
 
     /*Function to calculate totals*/
     const calculateTotals = () => {
-        let quantity = 0;
-        let mrp = 0;
-        let amount = 0;
+        let totalQuantity = 0;
+        let totalMRP = 0;
+        let totalAmount = 0;
+        let totalDiscount = 0;
 
-        selectedProducts.forEach(product => {
+        selectedProducts.forEach((product, index) => {
             const qty = product.qty ? parseInt(product.qty) : 1;
-            quantity += qty;
-            mrp += product.price * qty;
-            amount += (product.price * qty) - totaldiscount; // Adjust if discounts/taxes are applied
+            let discount = parseFloat(discounts[index] || 0);
+
+            // Correctly apply the discount
+            if (discountType === "percentage") {
+                discount = (product.price * discount) / 100; // Convert % to ₹
+            }
+
+            const unitCost = product.price - discount;
+            const netAmount = unitCost * qty;
+
+            totalQuantity += qty;
+            totalMRP += product.price * qty;
+            totalAmount += netAmount;
+            totalDiscount += discount * qty; // Ensure discount is correctly summed
         });
 
-        setTotalQuantity(quantity);
-        setTotalMRP(mrp);
-        setTotalAmount(amount);
+        setTotalQuantity(totalQuantity);
+        setTotalMRP(totalMRP);
+        setTotalAmount(totalAmount);
+        setTotalDiscount(totalDiscount); // Update the total discount amount
     };
 
     /*Trigger Calculation When selectedProducts Changes*/
     useEffect(() => {
         calculateTotals();
+
     }, [selectedProducts]);
 
     /**
@@ -156,9 +185,62 @@ const NewPosOrder = () => {
         try {
             // If a customer is not selected, do a guest login and store the token
             if (!selectedCustomer) {
-                authToken = await guestLogin();
-                setGuestToken(authToken); // Store the token for future use
+                var responsedata = await guestLogin();
+                setGuestToken(responsedata.token); // Store the token for future use
+                setSelectedCustomer(responsedata.customer_id); console.log("Customer ID:", responsedata.customer_id);
             }
+
+            // Create shopping cart items dynamically from selectedProducts
+            const shoppingCartItems = selectedProducts.map((product, index) => {
+                const qty = product.qty ?? 1;
+                const discount = parseFloat(discounts[index] || 0);
+                const unitCost = product.price - discount;
+                const netAmount = unitCost * qty;
+
+                return {
+                    StoreId: 1, // Replace with actual store ID if needed
+                    ShoppingCartTypeId: 2, // Adjust as necessary
+                    CustomerId: responsedata.customer_id || 0,
+                    ProductId: product.id,
+                    AttributesXml: "<Attributes>Sample</Attributes>", // Replace with actual attributes if needed
+                    CustomerEnteredPrice: product.price,
+                    Quantity: qty,
+                    RentalStartDateUtc: new Date().toISOString(),
+                    RentalEndDateUtc: new Date().toISOString(),
+                    CreatedOnUtc: new Date().toISOString(),
+                    UpdatedOnUtc: new Date().toISOString(),
+                    WarehouseId: 5, // Adjust if needed
+                    InStock: true,
+                    Hold: true,
+                    Type: "Standard", // Adjust as needed
+                    SalesManId: 101, // Replace with actual SalesManId if applicable
+                    DiscountType: discountType, // Use discountType from state
+                    DiscountVal: discount,
+                    AdditionalDiscountVal: 0, // Update if you have additional discounts
+                    AdditionalDiscountType: "Flat", // Adjust as needed
+                    NetAmount: netAmount,
+                    Mrp: product.price,
+                    UnitCost: unitCost,
+                    ShoppingCartType: "ShoppingCart",
+                    Id: product.id
+                };
+            });
+
+            // Define the hold API payload
+            const holdData =
+            {
+                shopping_cart_items: shoppingCartItems,
+                dictionary: {
+                    additionalProp1: "value1",
+                    additionalProp2: "value2",
+                    additionalProp3: "value3"
+                }
+            }
+                ;
+
+            // Call hold API
+            const holdResponse = await holdOrder(authToken, holdData);
+            console.log("Hold API Response:", holdResponse);
 
             // Clear the selected products
             setSelectedCustomer(null);
@@ -178,16 +260,28 @@ const NewPosOrder = () => {
      * If the response is successful, the hold bills are stored in the component state.
      * If the response fails, an error is logged to the console.
      */
-    const getholdbills = async () => {
+    const getholdbillsresponse = async () => {
         try {
-            // const response = await fetch('/api/get-hold-bills'); // 
-            // const data = await response.json();
-            // setHoldBills(data);
+
+            const holdbillsResponse = await getholdbills(token, warehouseId);
+            setHoldBills(holdbillsResponse.shopping_cart_items);
             setIsSidebarOpen(true); // Open the sidebar after fetching data
         } catch (error) {
             // console.error("Error fetching hold bills:", error);
         }
     };
+
+    const toggleDiscountType = () => {
+        console.log("toggleDiscountType");
+        setDiscountType((prevType) => {
+            const newType = prevType === "amount" ? "percentage" : "amount";
+            return newType;
+        });
+
+        calculateTotals();
+    };
+
+
 
     return (
         <PosLayout>
@@ -203,46 +297,81 @@ const NewPosOrder = () => {
                 {/* Second Row: Product Grid */}
                 <div className="row pos-left-middle">
                     <div className="col-12">
-                        <div className="p-2 border rounded bg-white">
+                        <div className="border rounded bg-white">
                             {selectedProducts.length > 0 ? (
-                                <table className="w-full border-collapse border">
+                                <table className="w-full border-collapse border carttable">
                                     <thead>
-                                        <tr className="bg-gray-200">
-                                            <th className="border px-4 py-2">ItemCode</th>
-                                            <th className="border px-4 py-2">Product</th>
-                                            <th className="border px-4 py-2">Qty</th>
-                                            <th className="border px-4 py-2">MRP</th>
-                                            <th className="border px-4 py-2">Discount</th>
-                                            <th className="border px-4 py-2">Unit Cost</th>
-                                            <th className="border px-4 py-2">Net Amount</th>
-                                            <th className="border px-4 py-2">Action</th>
+                                        <tr className="bg-black text-center text-white">
+                                            <th className="border px-2 py-2 ">Itemcode</th>
+                                            <th className="border px-2 py-2 w-45">Product</th>
+                                            <th className="border px-2 py-2 w-20">Qty</th>
+                                            <th className="border px-2 py-2">MRP</th>
+                                            <th className="border px-2 py-2">Discount</th>
+                                            <th className="border px-2 py-2">Add. Discount</th>
+                                            <th className="border px-2 py-2">Unit Cost</th>
+                                            <th className="border px-2 py-2">Net Amount</th>
+                                            <th className="border px-2 py-2">Action</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {selectedProducts.map((product, index) => {
                                             const qty = product.qty ?? 1;
-                                            const discount = parseFloat(discounts[index] || 0);
+                                            let discount = parseFloat(discounts[index] || 0);
+                                            alert(discount);
+                                            // Apply discount correctly based on discount type
+                                            if (discountType === "percentage") {
+                                                discount = (product.price * discount) / 100; // Convert percentage to amount
+                                            } alert(discount);
                                             const unitCost = product.price - discount;
                                             const netAmount = unitCost * qty; return (
                                                 <tr key={product.id}>
-                                                    <td className="border px-4 py-2">{product.sku}</td>
-                                                    <td className="border px-4 py-2">{product.name}</td>
-                                                    <td className="border px-4 py-2"> <input type="number"
+                                                    <td className="border px-2 py-2">{product.sku}</td>
+                                                    <td className="border px-2 py-2 w-45">{product.name}</td>
+                                                    <td className="border px-2 py-2 w-20"> <input type="number"
                                                         readOnly="readonly"
                                                         id={`qty${index}`}
                                                         name={`qty${index}`}
                                                         value={product.qty == undefined ? 1 : product.qty}
                                                         onClick={() => { setQtyupdateIndex(index), setIsOpen(true), setResult(product.qty == undefined ? 1 : product.qty) }} ></input></td>
-                                                    <td className="border px-4 py-2">${product.price}</td>
-                                                    <td className="border px-4 py-2"><input
+                                                    <td className="border px-2 py-2">${product.price}</td>
+                                                    <td className="border px-2 py-2">
+                                                        {/* <input
                                                         type="number"
                                                         value={parseFloat(discounts[index] || 0)}
                                                         onChange={(e) => handleDiscountChange(index, e.target.value)}
                                                         className="w-16 text-center border rounded"
-                                                    /></td>
-                                                    <td className="border px-4 py-2">${unitCost}</td>
-                                                    <td className="border px-4 py-2">{netAmount}</td>
-                                                    <td className="border px-4 py-2 text-center">
+                                                    /> */}
+                                                        <div className="input-group">
+                                                            <button
+                                                                type="button"
+                                                                onClick={toggleDiscountType}
+                                                                className={`btn btn-dark ${discountType === "percentage" ? "btn-percent" : "btn-rupee"}`}
+                                                            >
+                                                                {discountType === "percentage" ? (
+                                                                    <i className="fa fa-percent" aria-hidden="true"></i>
+                                                                ) : (
+                                                                    <i className="fa fa-inr currency_style" aria-hidden="true"></i>
+                                                                )}
+                                                            </button>
+                                                            {/* <input
+                                                                type="number"
+                                                                // value={discountType === "percentage" ? ((discounts[index] / totalAmount) * 100).toFixed(2) : discounts[index]}
+                                                                value={discount}
+                                                                onChange={(e) => handleDiscountChange(index, e.target.value)}
+                                                                className="w-16 text-center border rounded"
+                                                            /> */}
+                                                            <input
+                                                                type="number"
+                                                                // Use the updated discounts array
+                                                                onChange={(e) => handleDiscountChange(index, e.target.value)}
+                                                                className="w-16 text-center border rounded"
+                                                            />
+                                                        </div>
+                                                    </td>
+                                                    <td className="border px-2 py-2">$0</td>
+                                                    <td className="border px-2 py-2">${unitCost.toFixed(2)}</td>
+                                                    <td className="border px-2 py-2">{netAmount.toFixed(2)}</td>
+                                                    <td className="border px-2 py-2 text-center">
                                                         <button
                                                             onClick={() => removeProduct(product.id)}
                                                             className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
@@ -368,7 +497,7 @@ const NewPosOrder = () => {
                                 <li>
                                     <button
                                         title="Hold Bill"
-                                        className="flex items-center space-x-2" onClick={getholdbills}
+                                        className="flex items-center space-x-2" onClick={getholdbillsresponse}
                                     >
                                         <i className="fa fa-pause" aria-hidden="true"></i>
                                         <span>Hold Bill</span>
@@ -534,16 +663,36 @@ const NewPosOrder = () => {
                 </Modal.Footer>
 
             </Modal>
-            <div className={`right-sidebarpopup mt-2 mb-2 ${isSidebarOpen ? 'open' : 'closed'}`}>
-                <div className="right-top">
-                    <button className="close-btn" onClick={() => setIsSidebarOpen(false)}>X</button>
-                    <h3>Hold Bills</h3>
-                    <ul>
+            <div id="holdbilldiv" className={`holdbilldiv right-sidebarpopup mb-2 ${isSidebarOpen ? 'open' : 'closed'}`}>
+                <div className="right-top hold-bill-list p-2">
+                    <div className="bg-dark p-2 text-white">
+                        <button className="close-btn" onClick={() => setIsSidebarOpen(false)}>X</button>
+                        <h6>On Hold</h6>
+                    </div>
+
+                    <ul className="hold_bill_div">
                         {holdBills.length > 0 ? (
                             holdBills.map((bill, index) => (
-                                <li key={index}>
-                                    <p>Bill No: {bill.billNo}</p>
-                                    <p>Amount: ${bill.amount}</p>
+                                <li key={index} className="mb-2">
+                                    <div>
+                                        <a href="#"  >
+                                            <div className="d-flex align-items-center">
+                                                <p>Order ID : <span>HOLD{bill.Id}</span></p>
+                                                {/* <p className="mt-1 print-btn pb-0"  >
+                                                <span><button>
+                                                    <i className="fa fa-print" aria-hidden="true"></i></button></span></p> */}
+                                                {/* <p className="mt-1 print-btn pb-0"  >
+                                                <span><button><i className="fa fa-trash" aria-hidden="true"></i>
+                                                </button></span></p> */}
+                                            </div>
+                                            <p className="mt-1"  ><span>{bill.CreatedOnUtc}</span></p>
+                                            <p>
+                                                Contact Name :{bill.CustomerName && bill.CustomerName !== null ? bill.CustomerName : 'Walk In Customer'}</p>
+                                            <p>Contact No : {bill.Phone}</p><p>Amount  <b><i className="fa fa-inr currency_style" aria-hidden="true">
+                                            </i>{bill.Netamount}</b>
+                                            </p>
+                                        </a>
+                                    </div>
                                 </li>
                             ))
                         ) : (

@@ -142,6 +142,69 @@
      cursor: pointer;
  }
 
+ .carttable thead tr th {
+     font-size: 14px;
+     font-weight: 600;
+ }
+
+ .hold-bill-list ul {
+     margin-bottom: 0
+ }
+
+ .hold-bill-list ul li {
+     list-style: none;
+     border-radius: 5px;
+     background-color: #fff
+ }
+
+ .hold-bill-list ul li a {
+     padding: 10px;
+     border-radius: 5px;
+     display: block
+ }
+
+ .hold-bill-list ul li a:hover {
+     text-decoration: none
+ }
+
+ .hold-bill-list ul li p {
+     margin-bottom: 0;
+     color: #000
+ }
+
+ .hold-bill-list ul li p:first-child {
+     width: 100%;
+     float: left;
+     margin-right: 1%
+ }
+
+ .hold-bill-list #deviceConnectButton {
+     border-radius: 20px;
+     padding: 0.2rem 1rem;
+     border: none;
+ }
+
+ .hold-bill-list #deviceConnectButton:focus {
+     outline: none !important;
+     box-shadow: none !important;
+ }
+
+ .holdbilldiv {
+     height: 100%;
+     width: 300px;
+     position: fixed;
+     z-index: 999;
+     top: 0;
+     right: -300px;
+     background-color: #f7f7f7;
+     overflow-x: hidden;
+     transition: .5s;
+ }
+
+ #holdbilldiv {
+     z-index: 99999;
+ }
+
  /***************************CSS BY SHIKHA END************************************/
  /***************************CSS BY BUNTY START************************************/
  .calculator {
