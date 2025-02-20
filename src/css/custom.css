@@ -4,6 +4,7 @@ a {
 }
 body {
   background-color: #eef0f8;
+  
 }
 select {
   cursor: pointer;
@@ -881,10 +882,7 @@ ul.product-page-header-ul {
   background-color: #00a4e5;
   border-color: #00a4e5;
 }
-.fixed.left-0 .flex.items-center {
-  padding-top: 20px;
-  padding-bottom: 20px;
-}
+
 
 .sub_menu_list li {
   padding: 0px;
@@ -928,12 +926,6 @@ header.sticky button {
 
 .table-info {
   font-size: 14px;
-}
-header.sticky {
-  background: #282733 !important;
-}
-aside.fixed.left-0 {
-  background: #282733 !important;
 }
 
 .common_page_layout tr {
@@ -2881,12 +2873,7 @@ ul.product-page-header-ul {
   border-bottom: 1px solid #333;
   margin: 0 !important;
 }
-.sub_menu_list li a {
-  padding: 7px 45px !important;
-  font-size: 14px;
-  font-weight: 600;
-  position: relative;
-}
+
 .pagination .page-link {
   color: #898b96;
   font-size: 14px;
@@ -4180,12 +4167,7 @@ body .text-primary {
   margin: 4px 0 0 6px;
 }
 
-#multiSelectDropdown {
-  border-radius: 4px;
-  height: 34px;
-  padding: 0 5px;
-  margin: 0 0 10px;
-}
+
 
 .product_page.inventory_tracking_page label {
   font-weight: 500;
@@ -4479,4 +4461,64 @@ select {
   padding: 2px 5px;
   text-align: center;
   width: 45px;
+}
+
+header.sticky {
+  background: #282733 !important;
+ 
+}
+aside.fixed.left-0 {
+  background: #282733 !important;
+  width: 14.25rem;
+}
+.relative.flex.flex-1.flex-col.lg\:ml-72\.5 {
+  margin-left: 14.125rem;
+}
+
+.fixed.left-0 .flex.items-center {
+  padding-top: 10px;
+  padding-bottom: 20px;
+}
+.group.relative {font-size: 14px;
+  line-height: 0.5rem;}
+  
+  .sub_menu_list li a {
+  padding: 7px 38px 7px 44px !important;
+  font-size: 13px;
+  font-weight: 600;
+  position: relative;
+  line-height: 1.5em;
+}
+
+#datatableCustomTableLengthSelectBox {
+  height: 34px;
+}
+.search-font.fa.fa-search {position: absolute;
+  right: 0;
+
+  padding: 8px;
+  cursor: pointer;}
+  
+  .btn.btn-sm.btn-primary.m-btn.m-btn--icon.m-btn--air.create-new-btn {
+  width: 236px;
+  margin-right: 20px;
+  height: 34px !important;
+  padding: 6px;
+}
+#multiSelectDropdown {
+  border-radius: 4px;
+  height: 34px;
+  padding: 0 5px;
+  margin: 0 0 10px;
+  width: 100%;
+}
+
+.col-lg-3.col-md-3.form-group label {
+  margin-top: 8px;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.stockverification-new-page .export-icons {
+  margin-top: 18px;
 }
