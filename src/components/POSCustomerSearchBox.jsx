@@ -1,7 +1,8 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import db from "@/db/dexieDB";
-const POSCustomerSearchBox = ({ setSelectedCustomer }) =>
+import { migrateshoppingcart } from "@/utils/posService";
+const POSCustomerSearchBox = ({ setSelectedCustomer,selectedCustomer,selectedProducts }) =>
 {
     const [searchTerm, setSearchTerm] = useState(''); // User input
     const [customers, setCustomers] = useState([]); // Search results
@@ -36,12 +37,35 @@ const POSCustomerSearchBox = ({ setSelectedCustomer }) =>
             console.error("Error searching customer:", error);
         }
     };
-    const addCustomer = (customer) =>
+    const addCustomer =async (customer) =>
     {
-        setCustomerId(customer.id);
-        setSelectedCustomer(customer.id);
-        setCustomers([]);
-        setSearchTerm(customer.first_name + " " + customer.last_name + " - " + customer.phone);
+        console.log("selectedProducts.length="+selectedProducts);
+        let oldCustomerId=0;
+        if(selectedProducts.length > 0)
+            {
+                oldCustomerId=selectedCustomer;
+            }
+        
+        if(selectedProducts!= null && selectedProducts.length > 0 && oldCustomerId > 0)
+        {
+            ////Case if having items in cart
+            try {
+                const migrateResponse = await migrateshoppingcart(token,oldCustomerId,customer.id, warehouseId);
+                setCustomerId(customer.id);
+                setSelectedCustomer(customer.id);
+                setCustomers([]);
+                setSearchTerm(customer.first_name + " " + customer.last_name + " - " + customer.phone);
+            } catch (error) {
+                console.error("Migrate customer:", error);
+            }
+        }
+        else{
+            ////Case if cart empty
+                setCustomerId(customer.id);
+                setSelectedCustomer(customer.id);
+                setCustomers([]);
+                setSearchTerm(customer.first_name + " " + customer.last_name + " - " + customer.phone);
+        }
     };
     const clearSearch = () =>
     {

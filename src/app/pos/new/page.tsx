@@ -2,6 +2,7 @@
 import PosLayout from "@/components/Layouts/PosLayout";
 import { saveProducts } from '@/utils/productService';
 import { saveCustomers } from '@/utils/customerService';
+import { saveHoldBill,getHoldBills,savesingleHoldBill,getHoldBillsById } from '@/utils/holdbillServices';
 import { useEffect, useState } from "react";
 import { useAuth } from "@/app/context/AuthContext";
 import POSProductSearchBox from '@/components/POSProductSearchBox';
@@ -84,7 +85,7 @@ const NewPosOrder = () => {
 
     useEffect(() => {
         /**
-         * Fetches products from the API and saves them.
+         * Fetches products from the API and saves into indexDB.
          */
         let pageIndex = 1;
         const fetchProducts = async () => {
@@ -121,10 +122,18 @@ const NewPosOrder = () => {
             saveCustomers(customers.items);
         };
 
-
+    
+     /**
+       * Fetches Hold Bills from the API and save into IndexDB.
+       */
+     const fetchAllHoldBills = async () => {
+        const holdbillsResponse = await getholdbills(token, warehouseId);
+        saveHoldBill(holdbillsResponse.shopping_cart_items);
+    };
 
         fetchProducts();
         fetchCustomers();
+        fetchAllHoldBills();
     }, []);
 
     /*Function to calculate totals*/
@@ -158,6 +167,12 @@ const NewPosOrder = () => {
         setTotalDiscount(totalDiscount); // Update the total discount amount
     };
 
+    /* This function is used to add hold bill to cart by id*/
+    const shiftHoldBillToCart= async (billid)=>{
+        const holdbillsResponse = await getHoldBillsById(billid);
+        setSelectedProducts(holdbillsResponse);
+    }
+
     /*Trigger Calculation When selectedProducts Changes*/
     useEffect(() => {
         calculateTotals();
@@ -181,13 +196,20 @@ const NewPosOrder = () => {
      */
     const handleHoldClick = async () => {
         let authToken = token;
-
+        let customerid=0;
         try {
             // If a customer is not selected, do a guest login and store the token
             if (!selectedCustomer) {
-                var responsedata = await guestLogin();
+                console.log("selectedCustomer:", selectedCustomer);
+                let responsedata = await guestLogin();
                 setGuestToken(responsedata.token); // Store the token for future use
-                setSelectedCustomer(responsedata.customer_id); console.log("Customer ID:", responsedata.customer_id);
+                setSelectedCustomer(responsedata.customer_id); 
+                customerid=responsedata.customer_id;
+                console.log("Customer ID:", responsedata.customer_id);
+            }
+            else{
+                console.log("Selected Customer ID:", selectedCustomer);
+                customerid=selectedCustomer;
             }
 
             // Create shopping cart items dynamically from selectedProducts
@@ -200,7 +222,7 @@ const NewPosOrder = () => {
                 return {
                     StoreId: 1, // Replace with actual store ID if needed
                     ShoppingCartTypeId: 2, // Adjust as necessary
-                    CustomerId: responsedata.customer_id || 0,
+                    CustomerId: customerid,
                     ProductId: product.id,
                     AttributesXml: "<Attributes>Sample</Attributes>", // Replace with actual attributes if needed
                     CustomerEnteredPrice: product.price,
@@ -241,10 +263,17 @@ const NewPosOrder = () => {
             // Call hold API
             const holdResponse = await holdOrder(authToken, holdData);
             console.log("Hold API Response:", holdResponse);
+            if(holdResponse != undefined)
+            {
+                saveHoldBill(holdResponse.shopping_cart_items);
+                
+                // Clear the selected products
+                setSelectedCustomer(null);
+                setSelectedProducts([]);
+            }
+           
 
-            // Clear the selected products
-            setSelectedCustomer(null);
-            setSelectedProducts([]);
+            
 
             // Call the hold order API
             //const holdResponse = await holdOrder(authToken, selectedCustomer);
@@ -263,8 +292,9 @@ const NewPosOrder = () => {
     const getholdbillsresponse = async () => {
         try {
 
-            const holdbillsResponse = await getholdbills(token, warehouseId);
-            setHoldBills(holdbillsResponse.shopping_cart_items);
+            //const holdbillsResponse = await getholdbills(token, warehouseId);
+            const holdbillsResponse=await getHoldBills();
+            setHoldBills(holdbillsResponse);
             setIsSidebarOpen(true); // Open the sidebar after fetching data
         } catch (error) {
             // console.error("Error fetching hold bills:", error);
@@ -291,7 +321,7 @@ const NewPosOrder = () => {
                         <POSProductSearchBox setSelectedProducts={setSelectedProducts} />
                     </div>
                     <div className="col-md-4">
-                        <POSCustomerSearchBox setSelectedCustomer={setSelectedCustomer} />
+                        <POSCustomerSearchBox setSelectedCustomer={setSelectedCustomer} selectedCustomer={selectedCustomer} selectedProducts={selectedProducts} />
                     </div>
                 </div>
                 {/* Second Row: Product Grid */}
@@ -317,11 +347,12 @@ const NewPosOrder = () => {
                                         {selectedProducts.map((product, index) => {
                                             const qty = product.qty ?? 1;
                                             let discount = parseFloat(discounts[index] || 0);
-                                            alert(discount);
+                                            //alert(discount);
                                             // Apply discount correctly based on discount type
                                             if (discountType === "percentage") {
                                                 discount = (product.price * discount) / 100; // Convert percentage to amount
-                                            } alert(discount);
+                                            } 
+                                            //alert(discount);
                                             const unitCost = product.price - discount;
                                             const netAmount = unitCost * qty; return (
                                                 <tr key={product.id}>
@@ -675,7 +706,7 @@ const NewPosOrder = () => {
                             holdBills.map((bill, index) => (
                                 <li key={index} className="mb-2">
                                     <div>
-                                        <a href="#"  >
+                                        <a href="#"  onClick={()=>shiftHoldBillToCart(bill.Id)}>
                                             <div className="d-flex align-items-center">
                                                 <p>Order ID : <span>HOLD{bill.Id}</span></p>
                                                 {/* <p className="mt-1 print-btn pb-0"  >

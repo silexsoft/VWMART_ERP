@@ -3,7 +3,7 @@ export const guestLogin = async () =>
 {
     try
     {
-
+ console.log("guestLogin");
         let response = await fetch(`${process.env.NEXT_PUBLIC_API_HOST}/api-frontend/Authenticate/GetToken`, {
             cache: 'no-store',
             method: 'POST',
@@ -18,7 +18,6 @@ export const guestLogin = async () =>
         });
 
         let data = await response.json();
-
         return data;
 
         // document.cookie = `token=${data.token}`
@@ -51,8 +50,8 @@ export const holdOrder = async (token, holdData) =>
             },
             body: JSON.stringify(holdData)
         });
-
-        return response.data;
+        return response.json();
+        //return response.data;
     } catch (error)
     {
         console.error("Hold order failed:", error);
@@ -83,3 +82,25 @@ export const getholdbills = async (token, warehouseId) =>
         throw error;
     }
 };
+
+//This api code used to Migrate ShoppingCart from demo user to selected user.
+export const migrateshoppingcart = async(token, fromCustomerId, toCustomerId, warehouseid) => {
+   
+    try
+    {
+        let response = await fetch(`${process.env.NEXT_PUBLIC_API_HOST}/api-frontend/ShoppingCart/MigrateShoppingCart/${fromCustomerId}/${toCustomerId}?includeCouponCodes=true&warehouseid==${warehouseid}`, {
+            cache: 'no-store',
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: token ? `Bearer ${token}` : ""
+            }
+        });
+
+        return response.json();
+    } catch (error)
+    {
+        console.error("Get Hold order failed:", error);
+        throw error;
+    }
+  }
