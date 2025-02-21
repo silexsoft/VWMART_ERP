@@ -14,6 +14,7 @@ const NewPosOrder = () => {
     const { token, logout, warehouseId } = useAuth();
     const [selectedProducts, setSelectedProducts] = useState([]);
     const [selectedCustomer, setSelectedCustomer] = useState();
+    const [customerLastOrder, setCustomerLastOrder] = useState();
     const [customers, setCustomers] = useState([]);//used for full custoner information
     const [isOpen, setIsOpen] = useState(false)
     const [qtyUpdateIndex, setQtyupdateIndex] = useState(0)
@@ -359,15 +360,15 @@ const NewPosOrder = () => {
                         setSearchCustomerTerm={setSearchCustomerTerm}
                         searchCustomerTerm={searchCustomerTerm}
                         setCustomers={setCustomers}
-                        customers={customers} />
+                        customers={customers}
+                        setCustomerLastOrder={setCustomerLastOrder} />
                     </div>
                 </div>
                 {/* Second Row: Product Grid */}
                 <div className="row pos-left-middle">
                     <div className="col-12">
                         <div className="border rounded bg-white">
-                            {selectedProducts.length > 0 ? (
-                                <table className="w-full border-collapse border carttable">
+                        <table className="w-full border-collapse border carttable">
                                     <thead>
                                         <tr className="bg-black text-center text-white">
                                             <th className="border px-2 py-2 ">Itemcode</th>
@@ -381,6 +382,8 @@ const NewPosOrder = () => {
                                             <th className="border px-2 py-2">Action</th>
                                         </tr>
                                     </thead>
+                            {selectedProducts.length > 0 ? (
+                                
                                     <tbody>
                                         {selectedProducts.map((product, index) => {
                                             let qty = product.qty ?? 1;
@@ -456,10 +459,11 @@ const NewPosOrder = () => {
                                             )
                                         })}
                                     </tbody>
-                                </table>
+                                
                             ) : (
-                                <p>No products selected.</p>
+                                <p className="text-center">No products selected.</p>
                             )}
+                            </table>
                         </div>
                     </div>
                     <div className="pos-left-bottom-fixed col-12">
@@ -630,12 +634,12 @@ const NewPosOrder = () => {
                             <p>
                                 <span className="font-weight-bold">Last Visited:</span> <span id="customer_last_transaction_date">-</span>
                             </p>
-                            <p>
+                            {/* <p>
                                 <span className="font-weight-bold">Last Bill Amount:</span>
                                 <span id="customer_last_transaction_amount">
                                     <i className="fa fa-inr currency_style" aria-hidden="true"></i>0
                                 </span>
-                            </p>
+                            </p> */}
                             <p>
                                 <span className="font-weight-bold">Most Purchased Item:</span>{" "}
                                 <span id="customer_last_transaction_prdouct">0</span>
@@ -659,12 +663,12 @@ const NewPosOrder = () => {
                         </div>
                         <div className="customer-highlights">
                             <p>
-                                <span className="font-weight-bold">Last Bill No.:</span> <span id="bill_last_no">ORD12360</span>
+                                <span className="font-weight-bold">Last Bill No.:</span> <span id="bill_last_no">{customerLastOrder != undefined && customerLastOrder != null && customerLastOrder.LatestOrder != null ? "ORD"+customerLastOrder.LatestOrder.CustomOrderNumber : 0}</span>
                             </p>
                             <p>
                                 <span className="font-weight-bold">Last Bill Amount:</span>{" "}
                                 <span id="billlast_amount">
-                                    <i className="fa fa-inr currency_style" aria-hidden="true"></i> 320.00
+                                    <i className="fa fa-inr currency_style" aria-hidden="true"></i> {customerLastOrder != undefined && customerLastOrder != null && customerLastOrder.LatestOrder != null ? customerLastOrder.LatestOrder.OrderTotal : 0}
                                 </span>
                             </p>
                             <p>

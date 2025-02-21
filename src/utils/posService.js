@@ -128,3 +128,26 @@ export const getProductDetail = async(token, productid, warehouseid) => {
         throw error;
     }
   }
+
+//This api code used to get Customer last order detail by phone no.
+export const getCustomerLastOrder = async(token, phoneno) => {
+   
+    try
+    {
+        const url = `${process.env.NEXT_PUBLIC_API_HOST}/api-frontend/Pos/GetTokenByPhone?phone=${phoneno}`;
+        let response = await fetch(url, {
+            cache: 'no-store',
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: token ? `Bearer ${token}` : ""
+            }
+        });
+
+        return response.json();
+    } catch (error)
+    {
+        console.error("Get Hold order failed:", error);
+        throw error;
+    }
+  }
