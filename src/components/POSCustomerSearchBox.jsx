@@ -1,19 +1,28 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import db from "@/db/dexieDB";
+import { useAuth } from "@/app/context/AuthContext";
 import { migrateshoppingcart } from "@/utils/posService";
-const POSCustomerSearchBox = ({ setSelectedCustomer,selectedCustomer,selectedProducts }) =>
+const POSCustomerSearchBox = ({ setSelectedCustomer,
+    selectedCustomer,
+    selectedProducts,
+    setSearchCustomerTerm,
+    searchCustomerTerm,
+    setCustomers,
+    customers
+ }) =>
 {
-    const [searchTerm, setSearchTerm] = useState(''); // User input
-    const [customers, setCustomers] = useState([]); // Search results
+    const { token, logout, warehouseId } = useAuth();
+    //const [searchTerm, setSearchTerm] = useState(''); // User input
+    //const [customers, setCustomers] = useState([]); // Search results
     const [customerId, setCustomerId] = useState([]);
     useEffect(() =>
     {
         const delayDebounceFn = setTimeout(() =>
         {
-            if (searchTerm.trim())
+            if (searchCustomerTerm.trim())
             {
-                searchCustomers(searchTerm);
+                searchCustomers(searchCustomerTerm);
             } else
             {
                 setCustomers([]);
@@ -21,7 +30,7 @@ const POSCustomerSearchBox = ({ setSelectedCustomer,selectedCustomer,selectedPro
         }, 300);
 
         return () => clearTimeout(delayDebounceFn);
-    }, [searchTerm]);
+    }, [searchCustomerTerm]);
 
     const searchCustomers = async (query) =>
     {
@@ -39,7 +48,6 @@ const POSCustomerSearchBox = ({ setSelectedCustomer,selectedCustomer,selectedPro
     };
     const addCustomer =async (customer) =>
     {
-        console.log("selectedProducts.length="+selectedProducts);
         let oldCustomerId=0;
         if(selectedProducts.length > 0)
             {
@@ -54,7 +62,8 @@ const POSCustomerSearchBox = ({ setSelectedCustomer,selectedCustomer,selectedPro
                 setCustomerId(customer.id);
                 setSelectedCustomer(customer.id);
                 setCustomers([]);
-                setSearchTerm(customer.first_name + " " + customer.last_name + " - " + customer.phone);
+                //setSearchTerm(customer.first_name + " " + customer.last_name + " - " + customer.phone);
+                setSearchCustomerTerm(customer.first_name + " " + customer.last_name + " - " + customer.phone);
             } catch (error) {
                 console.error("Migrate customer:", error);
             }
@@ -64,12 +73,14 @@ const POSCustomerSearchBox = ({ setSelectedCustomer,selectedCustomer,selectedPro
                 setCustomerId(customer.id);
                 setSelectedCustomer(customer.id);
                 setCustomers([]);
-                setSearchTerm(customer.first_name + " " + customer.last_name + " - " + customer.phone);
+                //setSearchTerm(customer.first_name + " " + customer.last_name + " - " + customer.phone);
+                setSearchCustomerTerm(customer.first_name + " " + customer.last_name + " - " + customer.phone);
         }
     };
     const clearSearch = () =>
     {
-        setSearchTerm("");
+        //setSearchTerm("");
+        setSearchCustomerTerm("");
         setCustomerId(null);
         setCustomers([]);
     };
@@ -77,13 +88,13 @@ const POSCustomerSearchBox = ({ setSelectedCustomer,selectedCustomer,selectedPro
     return (<div>
         <input
             type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            value={searchCustomerTerm}
+            onChange={(e) => setSearchCustomerTerm(e.target.value)}
             placeholder="Walk-in customer..."
             className="w-full p-2 border rounded"
         />
         {/* Clear (X) button */}
-        {searchTerm && (
+        {searchCustomerTerm && (
             <button
                 onClick={clearSearch}
                 className=" p-2 border rounded"
@@ -102,7 +113,7 @@ const POSCustomerSearchBox = ({ setSelectedCustomer,selectedCustomer,selectedPro
                     ))}
                 </ul>
             ) : (
-                searchTerm && !customerId && <p>No Customer found.</p>
+                searchCustomerTerm && !customerId && <p>No Customer found.</p>
             )}
         </div>
     </div>)

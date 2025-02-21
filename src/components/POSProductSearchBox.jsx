@@ -1,10 +1,12 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import db from "@/db/dexieDB";
-
-
+import { getProductDetail } from '@/utils/posService';
+import { updateSpecificProduct } from '@/utils/productService';
+import { useAuth } from "@/app/context/AuthContext";
 const POSProductSearchBox = ({ setSelectedProducts }) =>
 {
+  const { token, warehouseId } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [products, setProducts] = useState([]);
 
@@ -42,11 +44,19 @@ const POSProductSearchBox = ({ setSelectedProducts }) =>
 
   const addProduct = (product) =>
   {
-    setSelectedProducts((prev) =>
-      prev.some((p) => p.id === product.id) ? prev : [...prev, product]
-    );
-    setProducts([]);
-    setSearchTerm('');
+    
+    getProductDetail(token,product.id,warehouseId).then((obj_response)=>{
+      updateSpecificProduct(obj_response);
+      product=obj_response;
+      setSelectedProducts((prev) =>
+        prev.some((p) => p.id === product.id) ? prev : [...prev, product]
+      );
+      setProducts([]);
+      setSearchTerm('');
+    }).catch((obj_error)=>{
+          //Error case
+    })
+    
   };
 
 
@@ -69,7 +79,7 @@ const POSProductSearchBox = ({ setSelectedProducts }) =>
                 className="p-2 border-b cursor-pointer hover:bg-gray-200"
                 onClick={() => addProduct(product)}
               >
-                <strong>{product.name}</strong> - ${product.price}
+                <strong>{product.name}</strong>
               </li>
             ))}
           </ul>

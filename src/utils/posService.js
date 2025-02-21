@@ -104,3 +104,27 @@ export const migrateshoppingcart = async(token, fromCustomerId, toCustomerId, wa
         throw error;
     }
   }
+
+  //This api code used to get product detail from api.
+export const getProductDetail = async(token, productid, warehouseid) => {
+   
+    try
+    {
+        console.log("warehouseId="+warehouseid);
+        const url = `${process.env.NEXT_PUBLIC_API_HOST}/api-backend/Product/GetById/${productid}?warehouseId=${warehouseid}`;
+        let response = await fetch(url, {
+            cache: 'no-store',
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: token ? `Bearer ${token}` : ""
+            }
+        });
+
+        return response.json();
+    } catch (error)
+    {
+        console.error("Get Hold order failed:", error);
+        throw error;
+    }
+  }

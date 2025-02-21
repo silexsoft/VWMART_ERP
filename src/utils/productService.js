@@ -20,3 +20,25 @@ export const getProducts = async () => {
     return [];
   }
 };
+
+// Function to retrieve product by id
+export const getProductById = async (id) => {
+  try {
+    const product = await db.products.where("id").equals(id).toArray(); // Retrieve all products
+    return product;
+  } catch (error) {
+    console.error('Error retrieving products:', error);
+    return [];
+  }
+};
+
+// Function to update specific product
+export const updateSpecificProduct = async (product) => {
+  try {
+    await db.products.put(product);
+    return product;
+  } catch (error) {
+    console.error('Error retrieving products:', error);
+    return [];
+  }
+};

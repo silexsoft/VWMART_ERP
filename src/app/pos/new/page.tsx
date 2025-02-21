@@ -1,8 +1,8 @@
 "use client";
 import PosLayout from "@/components/Layouts/PosLayout";
-import { saveProducts } from '@/utils/productService';
-import { saveCustomers } from '@/utils/customerService';
-import { saveHoldBill,getHoldBills,savesingleHoldBill,getHoldBillsById } from '@/utils/holdbillServices';
+import { saveProducts,getProductById } from '@/utils/productService';
+import { saveCustomers,getCustomerById } from '@/utils/customerService';
+import { saveHoldBill,getHoldBills,getHoldBillsById,deleteHoldBillByCustomerId,deleteHoldBillByCustomerIdByProductId } from '@/utils/holdbillServices';
 import { useEffect, useState } from "react";
 import { useAuth } from "@/app/context/AuthContext";
 import POSProductSearchBox from '@/components/POSProductSearchBox';
@@ -14,6 +14,7 @@ const NewPosOrder = () => {
     const { token, logout, warehouseId } = useAuth();
     const [selectedProducts, setSelectedProducts] = useState([]);
     const [selectedCustomer, setSelectedCustomer] = useState();
+    const [customers, setCustomers] = useState([]);//used for full custoner information
     const [isOpen, setIsOpen] = useState(false)
     const [qtyUpdateIndex, setQtyupdateIndex] = useState(0)
     const [result, setResult] = useState('');
@@ -23,7 +24,7 @@ const NewPosOrder = () => {
     const [totalAmount, setTotalAmount] = useState(0);
     // const [discounts, setDiscounts] = useState({});
     const [discounts, setDiscounts] = useState(() => new Array(selectedProducts.length).fill(0));
-
+    const [searchCustomerTerm, setSearchCustomerTerm] = useState(''); // User input
     const [totaldiscount, setTotalDiscount] = useState(0);
     const [guesttoken, setGuestToken] = useState(null);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -78,6 +79,10 @@ const NewPosOrder = () => {
     const popupModel_UpdateQty = () => {
         const next_selectedProducts = [...selectedProducts];
         next_selectedProducts[qtyUpdateIndex].qty = result;
+        if(next_selectedProducts[qtyUpdateIndex].hold_qty != undefined && next_selectedProducts[qtyUpdateIndex].hold_qty > 0)
+            {
+                next_selectedProducts[qtyUpdateIndex].hold_qty = result;
+            }
         setSelectedProducts(next_selectedProducts);
         setIsOpen(false);
     }
@@ -90,7 +95,7 @@ const NewPosOrder = () => {
         let pageIndex = 1;
         const fetchProducts = async () => {
             const url = `${process.env.NEXT_PUBLIC_API_HOST}/api-backend/Product/GetAll?pageIndex=${pageIndex - 1}
-      &pageSize=100`;
+      &pageSize=100&warehouseId=${warehouseId}`;
             const response = await fetch(url, {
                 method: "GET",
                 headers: {
@@ -144,7 +149,11 @@ const NewPosOrder = () => {
         let totalDiscount = 0;
 
         selectedProducts.forEach((product, index) => {
-            const qty = product.qty ? parseInt(product.qty) : 1;
+            let qty = product.qty ? parseInt(product.qty) : 1;
+            if(product.hold_qty != undefined && product.hold_qty > 0)
+            {
+                qty=product.hold_qty;
+            }
             let discount = parseFloat(discounts[index] || 0);
 
             // Correctly apply the discount
@@ -168,9 +177,29 @@ const NewPosOrder = () => {
     };
 
     /* This function is used to add hold bill to cart by id*/
-    const shiftHoldBillToCart= async (billid)=>{
-        const holdbillsResponse = await getHoldBillsById(billid);
-        setSelectedProducts(holdbillsResponse);
+    const shiftHoldBillToCart= async (CustomerId)=>{
+        const holdbillsResponse = await getHoldBillsById(CustomerId);
+        setSelectedCustomer(CustomerId); 
+        getCustomerById(CustomerId).then((obj_cust)=>{
+            console.log(obj_cust);
+            setSearchCustomerTerm(obj_cust.first_name + " " + obj_cust.last_name + " - " + obj_cust.phone);
+            setCustomers(obj_cust);
+        })
+        let newproduct_fromHold=[];
+        holdbillsResponse.map((holdbill, index) => {           
+           getProductById(holdbill.ProductId).then((productDetail) =>{               
+                if(productDetail != undefined && productDetail != null && productDetail.length > 0)
+                {
+                    productDetail[0]["hold_qty"]=holdbill.Quantity;
+                    newproduct_fromHold.push(productDetail[0]);
+                }
+                if(newproduct_fromHold.length >= holdbillsResponse.length)
+                    {
+                        setSelectedProducts(newproduct_fromHold);
+                    }    
+           }) 
+                 
+        })        
     }
 
     /*Trigger Calculation When selectedProducts Changes*/
@@ -185,6 +214,10 @@ const NewPosOrder = () => {
  */
     const removeProduct = (id) => {
         setSelectedProducts(selectedProducts.filter((product) => product.id !== id));
+        if(selectedCustomer != undefined)
+        {
+            deleteHoldBillByCustomerIdByProductId(selectedCustomer,id);
+        }
     };
 
 
@@ -265,16 +298,15 @@ const NewPosOrder = () => {
             console.log("Hold API Response:", holdResponse);
             if(holdResponse != undefined)
             {
+                /*Here we first delete old hold bill from index db by customer id*/
+                deleteHoldBillByCustomerId(customerid);
+                /*Here we  save hold bill into index db*/
                 saveHoldBill(holdResponse.shopping_cart_items);
                 
                 // Clear the selected products
                 setSelectedCustomer(null);
                 setSelectedProducts([]);
             }
-           
-
-            
-
             // Call the hold order API
             //const holdResponse = await holdOrder(authToken, selectedCustomer);
             //console.log("Hold API Response:", holdResponse);
@@ -321,7 +353,13 @@ const NewPosOrder = () => {
                         <POSProductSearchBox setSelectedProducts={setSelectedProducts} />
                     </div>
                     <div className="col-md-4">
-                        <POSCustomerSearchBox setSelectedCustomer={setSelectedCustomer} selectedCustomer={selectedCustomer} selectedProducts={selectedProducts} />
+                        <POSCustomerSearchBox setSelectedCustomer={setSelectedCustomer} 
+                        selectedCustomer={selectedCustomer} 
+                        selectedProducts={selectedProducts}
+                        setSearchCustomerTerm={setSearchCustomerTerm}
+                        searchCustomerTerm={searchCustomerTerm}
+                        setCustomers={setCustomers}
+                        customers={customers} />
                     </div>
                 </div>
                 {/* Second Row: Product Grid */}
@@ -345,7 +383,11 @@ const NewPosOrder = () => {
                                     </thead>
                                     <tbody>
                                         {selectedProducts.map((product, index) => {
-                                            const qty = product.qty ?? 1;
+                                            let qty = product.qty ?? 1;
+                                            if(product.hold_qty != undefined && product.hold_qty > 0)
+                                            {
+                                                qty=product.hold_qty;
+                                            }
                                             let discount = parseFloat(discounts[index] || 0);
                                             //alert(discount);
                                             // Apply discount correctly based on discount type
@@ -362,9 +404,9 @@ const NewPosOrder = () => {
                                                         readOnly="readonly"
                                                         id={`qty${index}`}
                                                         name={`qty${index}`}
-                                                        value={product.qty == undefined ? 1 : product.qty}
-                                                        onClick={() => { setQtyupdateIndex(index), setIsOpen(true), setResult(product.qty == undefined ? 1 : product.qty) }} ></input></td>
-                                                    <td className="border px-2 py-2">${product.price}</td>
+                                                        value={qty}
+                                                        onClick={() => { setQtyupdateIndex(index), setIsOpen(true), setResult(qty) }} ></input></td>
+                                                    <td className="border px-2 py-2">{product.price}</td>
                                                     <td className="border px-2 py-2">
                                                         {/* <input
                                                         type="number"
@@ -399,8 +441,8 @@ const NewPosOrder = () => {
                                                             />
                                                         </div>
                                                     </td>
-                                                    <td className="border px-2 py-2">$0</td>
-                                                    <td className="border px-2 py-2">${unitCost.toFixed(2)}</td>
+                                                    <td className="border px-2 py-2">0</td>
+                                                    <td className="border px-2 py-2">{unitCost.toFixed(2)}</td>
                                                     <td className="border px-2 py-2">{netAmount.toFixed(2)}</td>
                                                     <td className="border px-2 py-2 text-center">
                                                         <button
@@ -677,7 +719,7 @@ const NewPosOrder = () => {
                             <button onClick={() =>
                                 calculator_handleClick('.')}>.</button>
                             <button onClick={() =>
-                                calculator_handleClick('')}><i className='fa fa-close'>X</i></button>
+                                calculator_handleClick('')}><i className='fa fa-close'></i></button>
 
 
 
@@ -706,7 +748,7 @@ const NewPosOrder = () => {
                             holdBills.map((bill, index) => (
                                 <li key={index} className="mb-2">
                                     <div>
-                                        <a href="#"  onClick={()=>shiftHoldBillToCart(bill.Id)}>
+                                        <a href="#"  onClick={()=>shiftHoldBillToCart(bill.CustomerId)}>
                                             <div className="d-flex align-items-center">
                                                 <p>Order ID : <span>HOLD{bill.Id}</span></p>
                                                 {/* <p className="mt-1 print-btn pb-0"  >
