@@ -59,6 +59,28 @@ export const holdOrder = async (token, holdData) =>
     }
 };
 
+//Create order API
+export const createOrder = async (token, orderData) =>
+    {
+        try
+        {
+            let response = await fetch(`${process.env.NEXT_PUBLIC_API_HOST}/api-frontend/Pos/AddProductToCart`, {
+                cache: 'no-store',
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: token ? `Bearer ${token}` : ""
+                },
+                body: JSON.stringify(orderData)
+            });
+            return response.json();
+        } catch (error)
+        {
+            console.error("Hold order failed:", error);
+            throw error;
+        }
+    };
+
 //Get Hold Bills
 export const getholdbills = async (token, warehouseId) =>
 {
@@ -151,3 +173,53 @@ export const getCustomerLastOrder = async(token, phoneno) => {
         throw error;
     }
   }
+
+  //This api get orders from api
+export const getAllOrdersFromApi = async(token, pageIndex,pageSize) => {
+   console.log("token="+token);
+    try
+    {
+        const response = await fetch(
+            `${process.env.NEXT_PUBLIC_API_HOST}/api-backend/Order/Search?storeId=0&vendorId=0&customerId=0
+    &productId=0&affiliateId=0&warehouseId=0&billingCountryId=0&pageIndex=${pageIndex}&pageSize=${pageSize}
+    &getOnlyTotalCount=false`,
+            {
+                method: 'GET',
+                headers: {
+                    accept: 'application/json',
+                    Authorization: token ? `Bearer ${token}` : '',
+                },
+            }
+        );
+
+        return response.json();
+    } catch (error)
+    {
+        console.error("Get Hold order failed:", error);
+        throw error;
+    }
+  }
+
+  //This api get order all items by order id from api
+export const getOrderItemsByOrderIdFromApi = async(token, orderid) => {
+     try
+     {
+
+         const response = await fetch(
+             `${process.env.NEXT_PUBLIC_API_HOST}/api-backend/OrderItem/GetOrderItems/${orderid}`,
+             {
+                 method: 'GET',
+                 headers: {
+                     accept: 'application/json',
+                     Authorization: token ? `Bearer ${token}` : '',
+                 },
+             }
+         );
+ 
+         return response.json();
+     } catch (error)
+     {
+         console.error("Get Hold order failed:", error);
+         throw error;
+     }
+   }

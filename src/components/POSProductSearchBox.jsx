@@ -4,6 +4,8 @@ import db from "@/db/dexieDB";
 import { getProductDetail } from '@/utils/posService';
 import { updateSpecificProduct } from '@/utils/productService';
 import { useAuth } from "@/app/context/AuthContext";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 const POSProductSearchBox = ({ setSelectedProducts }) =>
 {
   const { token, warehouseId } = useAuth();
@@ -34,6 +36,7 @@ const POSProductSearchBox = ({ setSelectedProducts }) =>
       const results = await db.products
         .where("name")
         .startsWithIgnoreCase(query)
+        //.and(obj => obj.in_stock == true)
         .toArray();
       setProducts(results);
     } catch (error)
@@ -48,9 +51,20 @@ const POSProductSearchBox = ({ setSelectedProducts }) =>
     getProductDetail(token,product.id,warehouseId).then((obj_response)=>{
       updateSpecificProduct(obj_response);
       product=obj_response;
-      setSelectedProducts((prev) =>
-        prev.some((p) => p.id === product.id) ? prev : [...prev, product]
-      );
+      if(product.in_stock )
+      {
+        setSelectedProducts((prev) =>
+          prev.some((p) => p.id === product.id) ? prev : [...prev, product]
+        );
+      }
+      else{
+        toast.error("Product is out of stock", {
+                      position: "top-right",
+                      autoClose: 5000,
+                      toastId:`out_of_stock_${product.id}`
+                    });
+      }
+      
       setProducts([]);
       setSearchTerm('');
     }).catch((obj_error)=>{
@@ -87,6 +101,7 @@ const POSProductSearchBox = ({ setSelectedProducts }) =>
           ''
         )}
       </div>
+     
     </div>
   );
 };

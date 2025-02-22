@@ -82,17 +82,17 @@ const menuGroups = [
           { label: "Expense", route: "/Bank/expense" },
         ],
       },
-      // {
-      //   icon: <i className="m-menu__link-icon m-menu__link-icon fa fa-fax"></i>,
-      //   label: "POS",
-      //   route: "#",
-      //   children: [
-      //     { label: "New", route: "" },
-      //     { label: "Order List", route: "" },
-      //     { label: "Credit Note", route: "" },
-      //     { label: "Sales Register", route: "" }
-      //   ],
-      // },
+      {
+        icon: <i className="m-menu__link-icon m-menu__link-icon fa fa-fax"></i>,
+        label: "POS",
+        route: "#",
+        children: [
+          { label: "New", route: "/pos/new" },
+          { label: "Order List", route: "/pos/orderlist" },
+          { label: "Credit Note", route: "" },
+          { label: "Sales Register", route: "" }
+        ],
+      },
       {
         icon: (
           <i className="m-menu__link-icon m-menu__link-icon fa fa-sitemap"></i>

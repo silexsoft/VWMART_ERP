@@ -6,6 +6,7 @@ import OrdersTable from "@/components/OrdersTable";
 import { useState, useEffect, use } from 'react';
 import { useAuth } from "@/app/context/AuthContext";
 import { useRouter } from 'next/navigation';
+import { getAllOrdersFromApi } from "@/utils/posService";
 
 const OrdersPage = () => {
     const [orders, setOrders] = useState([]);
@@ -21,24 +22,24 @@ const OrdersPage = () => {
     const fetchOrders = async (pageIndex: number) => {
         try {
             setorderSeries(pageIndex);
-            const response = await fetch(
-                `${process.env.NEXT_PUBLIC_API_HOST}/api-backend/Order/Search?storeId=0&vendorId=0&customerId=0
-        &productId=0&affiliateId=0&warehouseId=0&billingCountryId=0&pageIndex=${pageIndex}&pageSize=${pageSize}
-        &getOnlyTotalCount=false`,
-                {
-                    method: 'GET',
-                    headers: {
-                        accept: 'application/json',
-                        Authorization: token ? `Bearer ${token}` : '',
-                    },
-                }
-            );
+        //     const response = await fetch(
+        //         `${process.env.NEXT_PUBLIC_API_HOST}/api-backend/Order/Search?storeId=0&vendorId=0&customerId=0
+        // &productId=0&affiliateId=0&warehouseId=0&billingCountryId=0&pageIndex=${pageIndex}&pageSize=${pageSize}
+        // &getOnlyTotalCount=false`,
+        //         {
+        //             method: 'GET',
+        //             headers: {
+        //                 accept: 'application/json',
+        //                 Authorization: token ? `Bearer ${token}` : '',
+        //             },
+        //         }
+        //     );
 
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
-            }
+        //     if (!response.ok) {
+        //         throw new Error(`HTTP error! Status: ${response.status}`);
+        //     }
 
-            const data = await response.json();
+            const data = await getAllOrdersFromApi(token,pageIndex,pageSize);
             //console.log('Fetched orders:', data);
             settotalOrder(data.total_count);
             // Update state with orders and total pages

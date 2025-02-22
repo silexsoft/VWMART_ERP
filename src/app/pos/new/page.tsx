@@ -1,6 +1,6 @@
 "use client";
 import PosLayout from "@/components/Layouts/PosLayout";
-import { saveProducts,getProductById } from '@/utils/productService';
+import { saveProducts,getProductById,updateSpecificProduct } from '@/utils/productService';
 import { saveCustomers,getCustomerById } from '@/utils/customerService';
 import { saveHoldBill,getHoldBills,getHoldBillsById,deleteHoldBillByCustomerId,deleteHoldBillByCustomerIdByProductId } from '@/utils/holdbillServices';
 import { useEffect, useState } from "react";
@@ -8,7 +8,10 @@ import { useAuth } from "@/app/context/AuthContext";
 import POSProductSearchBox from '@/components/POSProductSearchBox';
 import POSCustomerSearchBox from '@/components/POSCustomerSearchBox';
 import { Modal, Button, Alert } from "react-bootstrap";
-import { guestLogin, holdOrder, getholdbills } from "@/utils/posService";
+import { guestLogin, holdOrder,createOrder, getholdbills,getOrderItemsByOrderIdFromApi,getProductDetail } from "@/utils/posService";
+import OrdersComponent from "@/components/Orders/OrdersComponent";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const NewPosOrder = () => {
     const { token, logout, warehouseId } = useAuth();
@@ -16,7 +19,8 @@ const NewPosOrder = () => {
     const [selectedCustomer, setSelectedCustomer] = useState();
     const [customerLastOrder, setCustomerLastOrder] = useState();
     const [customers, setCustomers] = useState([]);//used for full custoner information
-    const [isOpen, setIsOpen] = useState(false)
+    const [isOpen, setIsOpen] = useState(false);
+    const [isOrderPopupOpen, setIsOrderPopupOpen] = useState(false)
     const [qtyUpdateIndex, setQtyupdateIndex] = useState(0)
     const [result, setResult] = useState('');
     const [remark, setRemark] = useState("");
@@ -31,14 +35,16 @@ const NewPosOrder = () => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [holdBills, setHoldBills] = useState([]);
     const [discountType, setDiscountType] = useState("amount");
-
+    
     const handleDiscountChange = (index, value) => {
+        
         setDiscounts((prevDiscounts = []) => {
             if (!selectedProducts[index]) return prevDiscounts;
 
             let updatedDiscounts = [...prevDiscounts];
 
             let discountValue = parseFloat(value) || 0;
+           
             if (discountType === "percentage") {
                 discountValue = Math.min(100, Math.max(0, discountValue)); // Ensure valid %
                 updatedDiscounts[index] = discountValue; // Store percentage, not amount
@@ -88,13 +94,14 @@ const NewPosOrder = () => {
         setIsOpen(false);
     }
 
-
+    //Page Load functions
     useEffect(() => {
+
         /**
          * Fetches products from the API and saves into indexDB.
          */
         let pageIndex = 1;
-        const fetchProducts = async () => {
+        const fetchProducts = async (pageIndex) => {
             const url = `${process.env.NEXT_PUBLIC_API_HOST}/api-backend/Product/GetAll?pageIndex=${pageIndex - 1}
       &pageSize=100&warehouseId=${warehouseId}`;
             const response = await fetch(url, {
@@ -108,6 +115,10 @@ const NewPosOrder = () => {
             const products = await response.json();
             pageIndex++;
             saveProducts(products.items);
+            if(products.has_next_page)
+            {
+                fetchProducts(pageIndex);
+            }
         };
 
         /**
@@ -137,10 +148,31 @@ const NewPosOrder = () => {
         saveHoldBill(holdbillsResponse.shopping_cart_items);
     };
 
-        fetchProducts();
+        fetchProducts(pageIndex);
         fetchCustomers();
         fetchAllHoldBills();
+
+         // Add event listener for keydown
+            window.addEventListener("keydown", handleFunctionKeyPress);
+
+            // Clean up the event listener on unmount
+            return () => {
+            window.removeEventListener("keydown", handleFunctionKeyPress);
+            };
     }, []);
+
+
+    const handleFunctionKeyPress = (event) => {
+        // Check if the pressed key is a function key
+        if(event.key == "F6")
+        {
+            handleHoldClick();
+        }
+        if(event.key == "F4")
+            {
+                createCashOrder();
+            }
+      };
 
     /*Function to calculate totals*/
     const calculateTotals = () => {
@@ -182,17 +214,30 @@ const NewPosOrder = () => {
         const holdbillsResponse = await getHoldBillsById(CustomerId);
         setSelectedCustomer(CustomerId); 
         getCustomerById(CustomerId).then((obj_cust)=>{
-            console.log(obj_cust);
-            setSearchCustomerTerm(obj_cust.first_name + " " + obj_cust.last_name + " - " + obj_cust.phone);
-            setCustomers(obj_cust);
+            if(obj_cust != undefined)
+            {
+                setSearchCustomerTerm(obj_cust.first_name + " " + obj_cust.last_name + " - " + obj_cust.phone);
+                setCustomers(obj_cust);
+            }
+           
         })
         let newproduct_fromHold=[];
         holdbillsResponse.map((holdbill, index) => {           
            getProductById(holdbill.ProductId).then((productDetail) =>{               
                 if(productDetail != undefined && productDetail != null && productDetail.length > 0)
                 {
-                    productDetail[0]["hold_qty"]=holdbill.Quantity;
-                    newproduct_fromHold.push(productDetail[0]);
+                    if(productDetail.in_stock)
+                    {
+                        productDetail[0]["hold_qty"]=holdbill.Quantity;
+                        newproduct_fromHold.push(productDetail[0]);
+                    }
+                    else{
+                    toast.error(`Product ${productDetail[0].name} is out of stock`, {
+                                        position: "top-left",
+                                        autoClose: 5000,
+                                        toastId:`out_of_stock_${index}`
+                                        });
+                    }
                 }
                 if(newproduct_fromHold.length >= holdbillsResponse.length)
                     {
@@ -232,89 +277,195 @@ const NewPosOrder = () => {
         let authToken = token;
         let customerid=0;
         try {
-            // If a customer is not selected, do a guest login and store the token
-            if (!selectedCustomer) {
-                console.log("selectedCustomer:", selectedCustomer);
-                let responsedata = await guestLogin();
-                setGuestToken(responsedata.token); // Store the token for future use
-                setSelectedCustomer(responsedata.customer_id); 
-                customerid=responsedata.customer_id;
-                console.log("Customer ID:", responsedata.customer_id);
-            }
-            else{
-                console.log("Selected Customer ID:", selectedCustomer);
-                customerid=selectedCustomer;
-            }
-
-            // Create shopping cart items dynamically from selectedProducts
-            const shoppingCartItems = selectedProducts.map((product, index) => {
-                const qty = product.qty ?? 1;
-                const discount = parseFloat(discounts[index] || 0);
-                const unitCost = product.price - discount;
-                const netAmount = unitCost * qty;
-
-                return {
-                    StoreId: 1, // Replace with actual store ID if needed
-                    ShoppingCartTypeId: 2, // Adjust as necessary
-                    CustomerId: customerid,
-                    ProductId: product.id,
-                    AttributesXml: "<Attributes>Sample</Attributes>", // Replace with actual attributes if needed
-                    CustomerEnteredPrice: product.price,
-                    Quantity: qty,
-                    RentalStartDateUtc: new Date().toISOString(),
-                    RentalEndDateUtc: new Date().toISOString(),
-                    CreatedOnUtc: new Date().toISOString(),
-                    UpdatedOnUtc: new Date().toISOString(),
-                    WarehouseId: 5, // Adjust if needed
-                    InStock: true,
-                    Hold: true,
-                    Type: "Standard", // Adjust as needed
-                    SalesManId: 101, // Replace with actual SalesManId if applicable
-                    DiscountType: discountType, // Use discountType from state
-                    DiscountVal: discount,
-                    AdditionalDiscountVal: 0, // Update if you have additional discounts
-                    AdditionalDiscountType: "Flat", // Adjust as needed
-                    NetAmount: netAmount,
-                    Mrp: product.price,
-                    UnitCost: unitCost,
-                    ShoppingCartType: "ShoppingCart",
-                    Id: product.id
-                };
-            });
-
-            // Define the hold API payload
-            const holdData =
+            if(selectedProducts.length > 0)
             {
-                shopping_cart_items: shoppingCartItems,
-                dictionary: {
-                    additionalProp1: "value1",
-                    additionalProp2: "value2",
-                    additionalProp3: "value3"
+                // If a customer is not selected, do a guest login and store the token
+                if (!selectedCustomer) {
+                    console.log("selectedCustomer:", selectedCustomer);
+                    let responsedata = await guestLogin();
+                    setGuestToken(responsedata.token); // Store the token for future use
+                    setSelectedCustomer(responsedata.customer_id); 
+                    customerid=responsedata.customer_id;
+                    console.log("Customer ID:", responsedata.customer_id);
+                }
+                else{
+                    console.log("Selected Customer ID:", selectedCustomer);
+                    customerid=selectedCustomer;
+                }
+
+                // Create shopping cart items dynamically from selectedProducts
+                const shoppingCartItems = selectedProducts.map((product, index) => {
+                    const qty = product.qty ?? 1;
+                    const discount = parseFloat(discounts[index] || 0);
+                    const unitCost = product.price - discount;
+                    const netAmount = unitCost * qty;
+
+                    return {
+                        StoreId: 1, // Replace with actual store ID if needed
+                        ShoppingCartTypeId: 2, // Adjust as necessary
+                        CustomerId: customerid,
+                        ProductId: product.id,
+                        AttributesXml: "<Attributes>Sample</Attributes>", // Replace with actual attributes if needed
+                        CustomerEnteredPrice: product.price,
+                        Quantity: qty,
+                        RentalStartDateUtc: new Date().toISOString(),
+                        RentalEndDateUtc: new Date().toISOString(),
+                        CreatedOnUtc: new Date().toISOString(),
+                        UpdatedOnUtc: new Date().toISOString(),
+                        WarehouseId: 5, // Adjust if needed
+                        InStock: true,
+                        Hold: true,
+                        Type: "Standard", // Adjust as needed
+                        SalesManId: 101, // Replace with actual SalesManId if applicable
+                        DiscountType: discountType, // Use discountType from state
+                        DiscountVal: discount,
+                        AdditionalDiscountVal: 0, // Update if you have additional discounts
+                        AdditionalDiscountType: "Flat", // Adjust as needed
+                        NetAmount: netAmount,
+                        Mrp: product.price,
+                        UnitCost: unitCost,
+                        ShoppingCartType: "ShoppingCart",
+                        Id: product.id
+                    };
+                });
+
+                // Define the hold API payload
+                const holdData =
+                {
+                    shopping_cart_items: shoppingCartItems,
+                    dictionary: {
+                        additionalProp1: "value1",
+                        additionalProp2: "value2",
+                        additionalProp3: "value3"
+                    }
+                }
+                    ;
+
+                // Call hold API
+                const holdResponse = await holdOrder(authToken, holdData);
+                console.log("Hold API Response:", holdResponse);
+                if(holdResponse != undefined)
+                {
+                    /*Here we first delete old hold bill from index db by customer id*/
+                    deleteHoldBillByCustomerId(customerid);
+                    /*Here we  save hold bill into index db*/
+                    saveHoldBill(holdResponse.shopping_cart_items);
+                    
+                    // Clear the selected products
+                    setSelectedCustomer(null);
+                    setSelectedProducts([]);
                 }
             }
-                ;
-
-            // Call hold API
-            const holdResponse = await holdOrder(authToken, holdData);
-            console.log("Hold API Response:", holdResponse);
-            if(holdResponse != undefined)
-            {
-                /*Here we first delete old hold bill from index db by customer id*/
-                deleteHoldBillByCustomerId(customerid);
-                /*Here we  save hold bill into index db*/
-                saveHoldBill(holdResponse.shopping_cart_items);
-                
-                // Clear the selected products
-                setSelectedCustomer(null);
-                setSelectedProducts([]);
+            else{
+                toast.error("Add minimum 1 product", {
+                                      position: "top-right",
+                                      autoClose: 5000
+                                    });
             }
-            // Call the hold order API
-            //const holdResponse = await holdOrder(authToken, selectedCustomer);
-            //console.log("Hold API Response:", holdResponse);
+          
         } catch (error) {
             console.error("Error:", error);
         }
     };
+
+    /*Function used to create cash Order */
+    const createCashOrder=async () =>{
+        let authToken = token;
+        let customerid=0;
+        try {
+            if(selectedProducts.length > 0)
+            {
+                // If a customer is not selected, do a guest login and store the token
+                if (!selectedCustomer) {
+                    let responsedata = await guestLogin();
+                    setGuestToken(responsedata.token); // Store the token for future use
+                    setSelectedCustomer(responsedata.customer_id); 
+                    customerid=responsedata.customer_id;
+                }
+                else{
+                    customerid=selectedCustomer;
+                }
+
+                // Create shopping cart items dynamically from selectedProducts
+                const shoppingCartItems = selectedProducts.map((product, index) => {
+                    const qty = product.qty ?? 1;
+                    const discount = parseFloat(discounts[index] || 0);
+                    const unitCost = product.price - discount;
+                    const netAmount = unitCost * qty;
+
+                    return {
+                        StoreId: 1, // Replace with actual store ID if needed
+                        ShoppingCartTypeId: 2, // Adjust as necessary
+                        CustomerId: customerid,
+                        ProductId: product.id,
+                        AttributesXml: "<Attributes>Sample</Attributes>", // Replace with actual attributes if needed
+                        CustomerEnteredPrice: product.price,
+                        Quantity: qty,
+                        RentalStartDateUtc: new Date().toISOString(),
+                        RentalEndDateUtc: new Date().toISOString(),
+                        CreatedOnUtc: new Date().toISOString(),
+                        UpdatedOnUtc: new Date().toISOString(),
+                        WarehouseId: 5, // Adjust if needed
+                        InStock: true,
+                        Hold: true,
+                        Type: "Standard", // Adjust as needed
+                        SalesManId: 101, // Replace with actual SalesManId if applicable
+                        DiscountType: discountType, // Use discountType from state
+                        DiscountVal: discount,
+                        AdditionalDiscountVal: 0, // Update if you have additional discounts
+                        AdditionalDiscountType: "Flat", // Adjust as needed
+                        NetAmount: netAmount,
+                        Mrp: product.price,
+                        UnitCost: unitCost,
+                        ShoppingCartType: "ShoppingCart",
+                        Id: product.id
+                    };
+                });
+
+                // Define the hold API payload
+                const orderData =
+                {
+                    shopping_cart_items: shoppingCartItems,
+                    dictionary: {
+                        additionalProp1: "value1",
+                        additionalProp2: "value2",
+                        additionalProp3: "value3"
+                    }
+                }
+                    ;
+
+                // Call hold API
+                const orderResponse = await createOrder(authToken, orderData);
+                //console.log("Order API Response:", orderResponse);
+                if(orderResponse != undefined && orderResponse.shopping_cart_items != undefined && orderResponse.shopping_cart_items.length > 0)
+                {
+                    /*Here we first delete old hold bill from index db by customer id*/
+                    deleteHoldBillByCustomerId(customerid);
+                    
+                    // Clear the selected products
+                    setSelectedCustomer(null);
+                    setSelectedProducts([]);
+                    toast.success("Order created successfully.", {
+                        position: "top-right",
+                        autoClose: 5000
+                    });
+                }
+            }
+            else{
+                toast.error("Add minimum 1 product.", {
+                    position: "top-right",
+                    autoClose: 5000
+                  });
+            }
+            
+        } catch (error) {
+            console.error("Error:", error);
+            toast.error("Opps! Unable to create order.", {
+                                  position: "top-right",
+                                  autoClose: 5000
+                                });
+        }
+    }
 
     /**
      * Fetches the hold bills from the API.
@@ -344,6 +495,57 @@ const NewPosOrder = () => {
         calculateTotals();
     };
 
+    const getAllOrders = () =>{
+       setIsOrderPopupOpen(true);
+    }
+
+    /* This function is used to Reorder order items by order id.
+    This function called from OrdersComponent page */
+    const handle_ReOrder = async(obj_order)=>{
+        setSelectedCustomer(obj_order.customer_id); 
+        await getCustomerById(obj_order.customer_id).then((obj_cust)=>{
+            //console.log(obj_cust);
+            setSearchCustomerTerm(obj_cust.first_name + " " + obj_cust.last_name + " - " + obj_cust.phone);
+            setCustomers(obj_cust);
+        })
+        setSelectedProducts([]);
+        let newproduct_fromHold=[];
+        await getOrderItemsByOrderIdFromApi(token,obj_order.id).then((obj_oitmResp)=>{
+            obj_oitmResp.map((obj_items, orditem_index) => {   
+                getProductDetail(token,obj_items.product_id,warehouseId).then((obj_PD_response)=>{
+                     if(obj_PD_response != undefined && obj_PD_response != null && obj_PD_response.id > 0)
+                        {
+                            updateSpecificProduct(obj_PD_response);
+                            if(obj_PD_response.stock_quantity >= obj_items.quantity && obj_PD_response.in_stock)
+                            {
+                                obj_PD_response["hold_qty"]=obj_items.quantity;
+                                newproduct_fromHold.push(obj_PD_response);
+                            }
+                            else{
+                                console.log(`out_of_stock_${orditem_index}_${obj_items.product_id}`);
+                                toast.error(`Product ${obj_PD_response.name} is out of stock`, {
+                                                    position: "top-right",
+                                                    autoClose: 5000,
+                                                    toastId:`out_of_stock_${orditem_index}`
+                                                    });
+                                }
+                        }
+                        if(newproduct_fromHold.length >= 0)
+                            {
+                                setSelectedProducts(newproduct_fromHold);
+                                setIsOrderPopupOpen(false);
+                            } 
+
+                }).catch((obj_error)=>{
+                    //Error case
+              })       
+                      
+        })
+        }).catch((error)=>{
+                
+        })
+
+    }
 
 
     return (
@@ -390,6 +592,10 @@ const NewPosOrder = () => {
                                             if(product.hold_qty != undefined && product.hold_qty > 0)
                                             {
                                                 qty=product.hold_qty;
+                                            }
+                                            if(product.order_minimum_quantity > 0 && qty < product.order_minimum_quantity)
+                                            {
+                                                qty=product.order_minimum_quantity;
                                             }
                                             let discount = parseFloat(discounts[index] || 0);
                                             //alert(discount);
@@ -461,7 +667,12 @@ const NewPosOrder = () => {
                                     </tbody>
                                 
                             ) : (
-                                <p className="text-center">No products selected.</p>
+                                // <p className="text-center">No products selected.</p>
+                                <tbody>
+                                   <tr>
+                                    <td className="text-center" colSpan={10}>No products selected.</td>
+                                   </tr>
+                                </tbody>
                             )}
                             </table>
                         </div>
@@ -554,7 +765,7 @@ const NewPosOrder = () => {
                                     <div id="salesbtndiv" className="row">
                                         <button type="button" className="col btn btn-dark"><i className="fa fa-columns" /> Multiple Pay (F12)</button>
                                         <button type="button" className="col btn btn-dark" onClick={handleHoldClick}><i className="fa fa-pause" /> Hold (F6)</button>
-                                        <button type="button" className="col btn btn-dark"><i className="fa fa-inr" /> Cash (F4)</button>
+                                        <button type="button" className="col btn btn-dark" onClick={createCashOrder}><i className="fa fa-inr" /> Cash (F4)</button>
                                         <button type="button" className="col btn btn-dark"><i className="fa fa-calendar" /> Pay Later (F11)</button>
                                         <button type="button" className="col btn btn-dark"><i className="fa fa-print" /> Print Invoice</button>
                                     </div>
@@ -609,7 +820,7 @@ const NewPosOrder = () => {
                                     </a>
                                 </li>
                                 <li>
-                                    <a href="#" title="Orders" id="pos-list">
+                                    <a href="#" title="Orders" id="pos-list" onClick={getAllOrders}>
                                         <i className="fa fa-list" aria-hidden="true"></i> Orders
                                     </a>
                                 </li>
@@ -740,6 +951,22 @@ const NewPosOrder = () => {
                 </Modal.Footer>
 
             </Modal>
+            <Modal className="modal-xl" show={isOrderPopupOpen}>
+            <Modal.Header>
+            <div className="col-12">
+    <h4 className="text-xl font-semibold text-black dark:text-white float-left">
+      POS Orders
+    </h4>
+    <div  className="text-xl font-semibold text-black float-right">
+    <a onClick={()=> setIsOrderPopupOpen(false)}><i className="fa fa-close"></i></a>
+        </div>
+  </div>
+                
+            </Modal.Header>
+                <Modal.Body>
+                    <OrdersComponent setIsOrderPopupOpen={setIsOrderPopupOpen} handle_ReOrder={handle_ReOrder}></OrdersComponent>
+                </Modal.Body>
+            </Modal>
             <div id="holdbilldiv" className={`holdbilldiv right-sidebarpopup mb-2 ${isSidebarOpen ? 'open' : 'closed'}`}>
                 <div className="right-top hold-bill-list p-2">
                     <div className="bg-dark p-2 text-white">
@@ -778,6 +1005,7 @@ const NewPosOrder = () => {
                     </ul>
                 </div>
             </div>
+            <ToastContainer></ToastContainer>
         </PosLayout>
 
     )
