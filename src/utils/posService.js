@@ -64,7 +64,7 @@ export const createOrder = async (token, orderData) =>
     {
         try
         {
-            let response = await fetch(`${process.env.NEXT_PUBLIC_API_HOST}/api-frontend/Pos/AddProductToCart`, {
+            let response = await fetch(`${process.env.NEXT_PUBLIC_API_HOST}/api-frontend/Pos/ConfirmOrder`, {
                 cache: 'no-store',
                 method: 'POST',
                 headers: {
