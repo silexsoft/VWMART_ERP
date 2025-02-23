@@ -2,7 +2,7 @@
 import PosLayout from "@/components/Layouts/PosLayout";
 import { saveProducts,getProductById,updateSpecificProduct } from '@/utils/productService';
 import { saveCustomers,getCustomerById } from '@/utils/customerService';
-import { saveHoldBill,getHoldBills,getHoldBillsById,deleteHoldBillByCustomerId,deleteHoldBillByCustomerIdByProductId } from '@/utils/holdbillServices';
+import { saveHoldBill,getHoldBills,getHoldBillsByQuery,getHoldBillsById,deleteHoldBillByCustomerId,deleteHoldBillByCustomerIdByProductId } from '@/utils/holdbillServices';
 import { useEffect, useState } from "react";
 import { useAuth } from "@/app/context/AuthContext";
 import POSProductSearchBox from '@/components/POSProductSearchBox';
@@ -12,6 +12,7 @@ import { guestLogin, holdOrder,createOrder, getholdbills,getOrderItemsByOrderIdF
 import OrdersComponent from "@/components/Orders/OrdersComponent";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import OrderReceipt from "@/components/OrderPrint/OrderReceipt";
 
 const NewPosOrder = () => {
     const { token, logout, warehouseId } = useAuth();
@@ -20,6 +21,8 @@ const NewPosOrder = () => {
     const [customerLastOrder, setCustomerLastOrder] = useState();
     const [customers, setCustomers] = useState([]);//used for full custoner information
     const [isOpen, setIsOpen] = useState(false);
+    const [isInvoicePopupOpen, setIsInvoicePopupOpen] = useState(false);
+    
     const [isOrderPopupOpen, setIsOrderPopupOpen] = useState(false)
     const [qtyUpdateIndex, setQtyupdateIndex] = useState(0)
     const [result, setResult] = useState('');
@@ -35,6 +38,7 @@ const NewPosOrder = () => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [holdBills, setHoldBills] = useState([]);
     const [discountType, setDiscountType] = useState("amount");
+    const [searchHoldBill, setSearchHoldBill] = useState("");
     
     const handleDiscountChange = (index, value) => {
         
@@ -119,6 +123,13 @@ const NewPosOrder = () => {
             {
                 fetchProducts(pageIndex);
             }
+            else{
+                toast.success("All products synced successfully.", {
+                                      position: "top-right",
+                                      autoClose: 5000,
+                                      toastId:`product1`
+                                    });
+            }
         };
 
         /**
@@ -137,6 +148,11 @@ const NewPosOrder = () => {
             const customers = await response.json();
             pageIndex++;
             saveCustomers(customers.items);
+            toast.success("All customer synced successfully.", {
+                position: "top-right",
+                autoClose: 5000,
+                toastId:`customer1`
+              });
         };
 
     
@@ -146,6 +162,11 @@ const NewPosOrder = () => {
      const fetchAllHoldBills = async () => {
         const holdbillsResponse = await getholdbills(token, warehouseId);
         saveHoldBill(holdbillsResponse.shopping_cart_items);
+        toast.success("All hold bills synced successfully.", {
+            position: "top-right",
+            autoClose: 5000,
+            toastId:`holdbill1`
+          });
     };
 
         fetchProducts(pageIndex);
@@ -161,6 +182,22 @@ const NewPosOrder = () => {
             };
     }, []);
 
+    //Below use Effect used for Searching hold billls
+    useEffect(() =>
+        {
+            const delayDebounceFn = setTimeout(() =>
+            {
+                if (searchHoldBill.trim())
+                {
+                    searchHoldBills(searchHoldBill);
+                } else
+                {
+                    searchHoldBills([]);
+                }
+            }, 200);
+    
+            return () => clearTimeout(delayDebounceFn);
+        }, [searchHoldBill]);
 
     const handleFunctionKeyPress = (event) => {
         // Check if the pressed key is a function key
@@ -484,6 +521,27 @@ const NewPosOrder = () => {
             // console.error("Error fetching hold bills:", error);
         }
     };
+     
+
+    //Search Hold Bills By query
+    const searchHoldBills = async (query) =>
+        {
+            try
+            {
+                if(query != "")
+                {
+                    const holdbillsResponse = await getHoldBillsByQuery(query);
+                    setHoldBills(holdbillsResponse);
+                }
+                 else{
+                    const holdbillsResponse=await getHoldBills();
+                    setHoldBills(holdbillsResponse);
+                 }
+            } catch (error)
+            {
+                console.error("Error searching customer:", error);
+            }
+        };
 
     const toggleDiscountType = () => {
         console.log("toggleDiscountType");
@@ -545,6 +603,10 @@ const NewPosOrder = () => {
                 
         })
 
+    }
+
+    const PrintInvoice =() =>{
+        setIsInvoicePopupOpen(true);
     }
 
 
@@ -767,7 +829,7 @@ const NewPosOrder = () => {
                                         <button type="button" className="col btn btn-dark" onClick={handleHoldClick}><i className="fa fa-pause" /> Hold (F6)</button>
                                         <button type="button" className="col btn btn-dark" onClick={createCashOrder}><i className="fa fa-inr" /> Cash (F4)</button>
                                         <button type="button" className="col btn btn-dark"><i className="fa fa-calendar" /> Pay Later (F11)</button>
-                                        <button type="button" className="col btn btn-dark"><i className="fa fa-print" /> Print Invoice</button>
+                                        <button type="button" className="col btn btn-dark" onClick={()=> PrintInvoice()}><i className="fa fa-print"/> Print Invoice</button>
                                     </div>
                                 </div>
                             </div>
@@ -785,16 +847,16 @@ const NewPosOrder = () => {
                                 <li>
                                     <button
                                         title="Hold Bill"
-                                        className="flex items-center space-x-2" onClick={getholdbillsresponse}
+                                        className=" items-center space-x-2" onClick={getholdbillsresponse}
                                     >
-                                        <i className="fa fa-pause" aria-hidden="true"></i>
+                                        <i className="fa fa-pause" aria-hidden="true"></i><br/>
                                         <span>Hold Bill</span>
                                     </button>
                                 </li>
                                 <li>
                                     <button
                                         title="Payments"
-                                        className="flex flex-col items-center"
+                                        className="flex-col items-center"
                                     >
                                         <img
                                             src="https://cdn.vasyerp.com/assets/images/receipt-icon.svg?v=0.0.1"
@@ -963,7 +1025,7 @@ const NewPosOrder = () => {
   </div>
                 
             </Modal.Header>
-                <Modal.Body>
+                <Modal.Body className="p-1">
                     <OrdersComponent setIsOrderPopupOpen={setIsOrderPopupOpen} handle_ReOrder={handle_ReOrder}></OrdersComponent>
                 </Modal.Body>
             </Modal>
@@ -973,8 +1035,22 @@ const NewPosOrder = () => {
                         <button className="close-btn" onClick={() => setIsSidebarOpen(false)}>X</button>
                         <h6>On Hold</h6>
                     </div>
+                    <div className="relative py-1 w-full max-w-sm">
+                            <input type="text" placeholder="Search "
+                            value={searchHoldBill}
+                            onChange={(e) => setSearchHoldBill(e.target.value)}
+                            className="w-full px-2 py-2 border rounded-md shadow-sm focus:outline-none focus:ring focus:border-blue-300"></input>
+                             {searchHoldBill && (
+            <button
+                onClick={()=>setSearchHoldBill("")}
+                className="absolute top-1/2 right-2 -translate-y-1/2 text-gray-500 hover:text-black focus:outline-none"
+            >
+                ✕
+            </button>
+        )}
+                            </div>
 
-                    <ul className="hold_bill_div">
+                    <ul style={{height: window.outerHeight -200 + 'px',overflow:'scroll'}} className="hold_bill_div">
                         {holdBills.length > 0 ? (
                             holdBills.map((bill, index) => (
                                 <li key={index} className="mb-2">
@@ -1005,6 +1081,23 @@ const NewPosOrder = () => {
                     </ul>
                 </div>
             </div>
+
+            <Modal className="" show={isInvoicePopupOpen}>
+            <Modal.Header>
+            <div className="col-12">
+    <h4 className="text-xl font-semibold text-black dark:text-white float-left">
+      Order Invoice
+    </h4>
+    <div  className="text-xl font-semibold text-black float-right">
+    <a onClick={()=> setIsInvoicePopupOpen(false)}><i className="fa fa-close"></i></a>
+        </div>
+  </div>
+                
+            </Modal.Header>
+                <Modal.Body>
+                    <OrderReceipt></OrderReceipt>
+                </Modal.Body>
+            </Modal>
             <ToastContainer></ToastContainer>
         </PosLayout>
 

@@ -82,7 +82,7 @@ const POSProductSearchBox = ({ setSelectedProducts }) =>
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
         placeholder="Search products..."
-        className="w-full p-2 border rounded"
+        className="w-full px-2 py-2 border rounded-md shadow-sm focus:outline-none focus:ring focus:border-blue-300"
       />
       <div className="mt-2">
         {products.length > 0 ? (

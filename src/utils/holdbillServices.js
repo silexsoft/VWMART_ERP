@@ -41,6 +41,32 @@ export const getHoldBillsById = async (CustomerId) =>
             return [];
         }
     };
+
+    // Function to retrieve holdbills by query
+export const getHoldBillsByQuery = async (query) =>
+    {
+        try
+        {
+            const holdbills = await Promise.all([
+                db.holdbills.where("CustomerName").startsWithIgnoreCase(query).toArray(),
+                db.holdbills.where("Phone").startsWithIgnoreCase(query).toArray(),
+                db.holdbills.filter((record) =>
+                    record.Id.toString().startsWith(query)
+                ).toArray()
+            ]);
+            
+            const uniqueResults = Array.from(
+                new Map(holdbills.flat().map(item => [item.id, item])).values()
+            );
+          
+            return uniqueResults;
+        } catch (error)
+        {
+            //console.error('Error retrieving holdbills:', error);
+            return [];
+        }
+    };
+
 // Function to used to delete holdbills by customerid
     export const deleteHoldBillByCustomerId = async (CustomerId) =>
         {

@@ -64,10 +64,10 @@ const getAllOrders= async (pageIndex: number)=>{
 
     return (
         <div className="flex flex-col gap-10">
-                <div className="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark">
+                <div className="bg-white shadow-default dark:border-strokedark dark:bg-boxdark">
  
 
-  <div className="px-4 py-4.5 md:px-6 2xl:px-7.5">
+  <div style={{height: window.innerHeight -200 + 'px',overflow:'scroll'}} className="p-1 md:px-6 2xl:px-7.5">
     <table className="w-full table-auto border-collapse">
       <thead>
         <tr className="border-t border-stroke dark:border-strokedark">
@@ -178,7 +178,7 @@ const Pagination = ({
     onPageChange: (page: number) => void;
 }) => {
     return (
-        <div className="flex justify-center mt-4">
+        <div className="flex justify-center mt-1">
             <button
                 className="px-4 py-2 mx-1 bg-gray-200 rounded disabled:opacity-50"
                 onClick={() => onPageChange(currentPage - 1)}
