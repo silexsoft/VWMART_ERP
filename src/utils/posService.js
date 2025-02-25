@@ -133,7 +133,7 @@ export const getProductDetail = async(token, productid, warehouseid) => {
     try
     {
         console.log("warehouseId="+warehouseid);
-        const url = `${process.env.NEXT_PUBLIC_API_HOST}/api-backend/Product/GetById/${productid}?warehouseId=${warehouseid}`;
+        const url = `${process.env.NEXT_PUBLIC_API_HOST}/api-backend/Product/GetByIdPOS/${productid}?warehouseId=${warehouseid}`;
         let response = await fetch(url, {
             cache: 'no-store',
             method: 'GET',
@@ -223,3 +223,41 @@ export const getOrderItemsByOrderIdFromApi = async(token, orderid) => {
          throw error;
      }
    }
+
+
+   //Create POS Customer
+export const createPosCustomer = async(token, formData,warehouseid) => {
+    try
+    {
+        const response = await fetch(
+            `${process.env.NEXT_PUBLIC_API_HOST}/api-frontend/Pos/Register?WarehouseId=${warehouseid}`,
+            {
+                cache: 'no-store',
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: token ? `Bearer ${token}` : '',
+                },
+                body: JSON.stringify({
+                    "model":  {
+                        "phone_enabled": true,
+                        "phone_required": true,
+                        "username":`${formData.get("name")}`,
+                        "phone": `${formData.get("phone")}`
+                      },
+                      "form": {
+                        "additionalProp1": "string",
+                        "additionalProp2": "string",
+                        "additionalProp3": "string"
+                      }
+                })
+            }
+        );
+
+        return response.json();
+    } catch (error)
+    {
+        console.error("Get Hold order failed:", error);
+        throw error;
+    }
+  }

@@ -2,8 +2,12 @@
 import React, { useState, useEffect } from "react";
 import db from "@/db/dexieDB";
 import { useAuth } from "@/app/context/AuthContext";
-import { migrateshoppingcart,getCustomerLastOrder } from "@/utils/posService";
+import { migrateshoppingcart,getCustomerLastOrder,createPosCustomer } from "@/utils/posService";
 import { Modal, Button, Alert } from "react-bootstrap";
+import { saveCustomers,getCustomerById } from '@/utils/customerService';
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+
 const POSCustomerSearchBox = ({ setSelectedCustomer,
     selectedCustomer,
     selectedProducts,
@@ -93,8 +97,34 @@ const POSCustomerSearchBox = ({ setSelectedCustomer,
     /*This function is used to create new customer. */
     const createCustomer =async (event)=>{
         event.preventDefault();
+     
         const formData = new FormData(event.target);
-        console.log(formData);
+        await createPosCustomer(token,formData,warehouseId).then((obj_createCustomerResp)=>{
+            console.log(obj_createCustomerResp);
+            if(obj_createCustomerResp != undefined && obj_createCustomerResp.phone != undefined && obj_createCustomerResp.phone != "")
+            {
+                saveCustomers(obj_createCustomerResp);
+                toast.success("Customer created successfully.", {
+                                position: "top-right",
+                                autoClose: 5000,
+                                toastId:`customer1`
+                              });
+            }
+            else{
+                toast.error(obj_createCustomerResp, {
+                    position: "top-right",
+                    autoClose: 5000,
+                    toastId:`customer1`
+                  });
+            }
+            
+        }).catch((error)=>{
+            toast.error("Oops! Unable to created customer.", {
+                position: "top-right",
+                autoClose: 5000,
+                toastId:`customer1`
+              });
+        })
     }
 
 return (<div>
@@ -158,19 +188,21 @@ return (<div>
                 <Modal.Body>
                     <form onSubmit={createCustomer}>
                     <div className="row">
-                        <div className="col-12">
-                        <label className="col-lg-12 col-md-12 col-sm-12 p-2">
-                   Name <span className="text-red">*</span>
-                  </label>
-                            <input className="form-control form-control-sm" type="text" name="name" required></input>
-                        </div>
-                        <div className="col-12">
+                    <div className="col-12">
                         <label className="col-lg-12 col-md-12 col-sm-12 p-2">
                    Mobile No. <span className="text-red">*</span>
                   </label>
                           <input className="form-control form-control-sm" type="text"
   pattern="(?:0|[1-9]\d*)" minLength={10} name="phone" required></input>
                         </div>
+
+                        <div className="col-12">
+                        <label className="col-lg-12 col-md-12 col-sm-12 p-2">
+                   Name <span className="text-red">*</span>
+                  </label>
+                            <input className="form-control form-control-sm" type="text" name="name"></input>
+                        </div>
+                      
                         <div className="col-12">
                          <Button variant="primary" type="submit">
                            Save

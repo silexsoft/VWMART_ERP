@@ -106,30 +106,39 @@ const NewPosOrder = () => {
          */
         let pageIndex = 1;
         const fetchProducts = async (pageIndex) => {
-            const url = `${process.env.NEXT_PUBLIC_API_HOST}/api-backend/Product/GetAll?pageIndex=${pageIndex - 1}
+            const url = `${process.env.NEXT_PUBLIC_API_HOST}/api-backend/Product/GetAllPOSProduct?pageIndex=${pageIndex - 1}
       &pageSize=100&warehouseId=${warehouseId}`;
-            const response = await fetch(url, {
+            const product_response = await fetch(url, {
                 method: "GET",
                 headers: {
                     accept: "application/json",
                     Authorization: token ? `Bearer ${token}` : "",
                 },
             });
-
-            const products = await response.json();
-            pageIndex++;
-            saveProducts(products.items);
-            if(products.has_next_page)
+            if(product_response.status == 200)
             {
-                fetchProducts(pageIndex);
+                const products = await product_response.json();
+                pageIndex++;
+                saveProducts(products.items);
+                if(products.has_next_page)
+                {
+                    fetchProducts(pageIndex);
+                }
+                else{
+                    toast.success("All products synced successfully.", {
+                                        position: "top-right",
+                                        autoClose: 5000,
+                                        toastId:`product1`
+                                        });
+                }
             }
             else{
-                toast.success("All products synced successfully.", {
-                                      position: "top-right",
-                                      autoClose: 5000,
-                                      toastId:`product1`
-                                    });
-            }
+                toast.error("Oops! Unable to sync products.", {
+                    position: "top-right",
+                    autoClose: 5000,
+                    toastId:`product1`
+                  });
+            }            
         };
 
         /**
@@ -145,14 +154,23 @@ const NewPosOrder = () => {
 
                 }
             });
-            const customers = await response.json();
-            pageIndex++;
-            saveCustomers(customers.items);
-            toast.success("All customer synced successfully.", {
-                position: "top-right",
-                autoClose: 5000,
-                toastId:`customer1`
-              });
+            if(response.status == 200)
+            {
+                const customers = await response.json();
+                saveCustomers(customers.items);
+                toast.success("All customer synced successfully.", {
+                    position: "top-right",
+                    autoClose: 5000,
+                    toastId:`customer1`
+                  });
+            }
+            else{
+                toast.error("Oops! Unable to sync customers.", {
+                    position: "top-right",
+                    autoClose: 5000,
+                    toastId:`customer1`
+                  });
+            }
         };
 
     
@@ -160,13 +178,21 @@ const NewPosOrder = () => {
        * Fetches Hold Bills from the API and save into IndexDB.
        */
      const fetchAllHoldBills = async () => {
-        const holdbillsResponse = await getholdbills(token, warehouseId);
-        saveHoldBill(holdbillsResponse.shopping_cart_items);
-        toast.success("All hold bills synced successfully.", {
-            position: "top-right",
-            autoClose: 5000,
-            toastId:`holdbill1`
-          });
+        await getholdbills(token, warehouseId).then((holdbillsResponse)=>{
+            saveHoldBill(holdbillsResponse.shopping_cart_items);
+            toast.success("All hold bills synced successfully.", {
+                position: "top-right",
+                autoClose: 5000,
+                toastId:`holdbill1`
+            });
+        }).catch((error) =>{
+            toast.error("Oops! unable to sync hold bills", {
+                position: "top-right",
+                autoClose: 5000,
+                toastId:`holdbill1`
+            });
+        })
+        
     };
 
         fetchProducts(pageIndex);
@@ -904,27 +930,27 @@ const NewPosOrder = () => {
                     <div className="right-bottom text-left">
                         <div className="customer-highlights">
                             <h6>Customer Details</h6>
-                            <p>
+                            {/* <p>
                                 <span className="font-weight-bold">Last Visited:</span> <span id="customer_last_transaction_date">-</span>
-                            </p>
+                            </p> */}
                             {/* <p>
                                 <span className="font-weight-bold">Last Bill Amount:</span>
                                 <span id="customer_last_transaction_amount">
                                     <i className="fa fa-inr currency_style" aria-hidden="true"></i>0
                                 </span>
                             </p> */}
-                            <p>
+                            {/* <p>
                                 <span className="font-weight-bold">Most Purchased Item:</span>{" "}
                                 <span id="customer_last_transaction_prdouct">0</span>
                             </p>
                             <p>
                                 <span className="font-weight-bold" id="closing_value">Due Payment:</span>{" "}
                                 <span id="customer_closing">0</span>
-                            </p>
-                            <p>
+                            </p> */}
+                            {/* <p>
                                 <span className="font-weight-bold">Total Purchase:</span> <span id="customer_total_purchase">0</span>
-                            </p>
-                            <p id="loyaltyPointsdiv">
+                            </p> */}
+                            {/* <p id="loyaltyPointsdiv">
                                 <span className="font-weight-bold">Loyalty Points:</span> <span id="customer_loyalty">0</span>
                             </p>
                             <p id="coupon_div" className="m--hide">
@@ -932,7 +958,7 @@ const NewPosOrder = () => {
                                 <button className="btn btn-sm btn-dark">
                                     <i className="fa fa-plus" aria-hidden="true"></i>
                                 </button>
-                            </p>
+                            </p> */}
                         </div>
                         <div className="customer-highlights">
                             <p>
