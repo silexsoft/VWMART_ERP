@@ -4,10 +4,14 @@ import { getAllOrdersFromApi } from "@/utils/posService";
 import { useAuth } from "@/app/context/AuthContext";
 import {getStatusColor,orderStatusMap,paymentStatusMap} from "@/utils/commonConstant";
 import { useRouter } from 'next/navigation';
+import { bool } from "yup";
+interface OrdersComponentProps { 
+  handle_ReOrder: (order: any) => void;
+}
 
-const OrdersComponent = ({setIsOrderPopupOpen,handle_ReOrder}) => {
+const OrdersComponent: React.FC<OrdersComponentProps> = ({ handle_ReOrder }) => {
     const { token, logout, warehouseId } = useAuth();
-    const [orders, setOrders] = useState([]);
+    const [orders, setOrders] = useState<{id:number,order_total:number,customer_email:string,payment_status_id:string,order_status_id:number,created_on_utc:string}[]>([]);
     const [currentPage, setCurrentPage] = useState(0); // Tracks the current page index
     const [totalPages, setTotalPages] = useState(0);   // Tracks the total number of pages
     const [orderSeries, setorderSeries] = useState(0);
@@ -149,7 +153,7 @@ const getAllOrders= async (pageIndex: number)=>{
             ₹ {Number(order.order_total).toFixed(2)}
             </td>
             <td className="px-4 py-2 text-sm text-black dark:text-white">
-                 <a onClick={()=> handle_ReOrder(order)}><i className="fa fa-edit"></i></a>
+                 <button onClick={()=> handle_ReOrder(order)}><i className="fa fa-edit"></i></button>
             </td>
           </tr>
         ))}
@@ -165,7 +169,7 @@ const getAllOrders= async (pageIndex: number)=>{
                 
             </div>
     );
-}
+};
 
 // Pagination Component
 const Pagination = ({

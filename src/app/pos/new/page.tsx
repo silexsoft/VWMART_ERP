@@ -13,16 +13,18 @@ import OrdersComponent from "@/components/Orders/OrdersComponent";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import OrderReceipt from "@/components/OrderPrint/OrderReceipt";
+import CashRegisterNewModal from "@/components/CashRegisterModal";
+import { AnyObject, object } from "yup";
 
 const NewPosOrder = () => {
     const { token, logout, warehouseId } = useAuth();
-    const [selectedProducts, setSelectedProducts] = useState([]);
-    const [selectedCustomer, setSelectedCustomer] = useState();
-    const [customerLastOrder, setCustomerLastOrder] = useState();
+    const [selectedProducts, setSelectedProducts] = useState<{name:string,sku: string,order_minimum_quantity: number,id: number, qty: number; hold_qty?: number,price: number }[]>([]);
+    const [selectedCustomer, setSelectedCustomer] = useState(0);
+    const [customerLastOrder, setCustomerLastOrder] = useState<AnyObject>();
     const [customers, setCustomers] = useState([]);//used for full custoner information
     const [isOpen, setIsOpen] = useState(false);
     const [isInvoicePopupOpen, setIsInvoicePopupOpen] = useState(false);
-    
+    const [isCashRegisterModel, setIsCashRegisterModel]=useState(false);
     const [isOrderPopupOpen, setIsOrderPopupOpen] = useState(false)
     const [qtyUpdateIndex, setQtyupdateIndex] = useState(0)
     const [result, setResult] = useState('');
@@ -36,11 +38,11 @@ const NewPosOrder = () => {
     const [totaldiscount, setTotalDiscount] = useState(0);
     const [guesttoken, setGuestToken] = useState(null);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-    const [holdBills, setHoldBills] = useState([]);
+    const [holdBills, setHoldBills] = useState<any[]>([]);
     const [discountType, setDiscountType] = useState("amount");
     const [searchHoldBill, setSearchHoldBill] = useState("");
     
-    const handleDiscountChange = (index, value) => {
+    const handleDiscountChange = (index: any, value: any) => {
         
         setDiscounts((prevDiscounts = []) => {
             if (!selectedProducts[index]) return prevDiscounts;
@@ -67,19 +69,19 @@ const NewPosOrder = () => {
      * Updates the result based on the input value.
      * @param {string} value - The button value clicked on the calculator.
      */
-    const calculator_handleClick = (value) => {
+    const calculator_handleClick = (value: any) => {
         if (value === 'C') {
             setResult('');
         } else if (value.indexOf("+") > -1) {
             console.log(value.replace("+", ""));
-            setResult(parseFloat(result) + parseInt(value.replace("+", "")));
+            setResult((parseFloat(result) + parseInt(value.replace("+", ""))).toString());
         }
         else if (value === '') {
             setResult('0');
         }
         else {
 
-            setResult(parseFloat(result + value));
+            setResult(parseFloat(result + value).toString());
         }
     };
 
@@ -88,13 +90,18 @@ const NewPosOrder = () => {
     * Closes the modal after updating.
     */
     const popupModel_UpdateQty = () => {
-        const next_selectedProducts = [...selectedProducts];
-        next_selectedProducts[qtyUpdateIndex].qty = result;
-        if(next_selectedProducts[qtyUpdateIndex].hold_qty != undefined && next_selectedProducts[qtyUpdateIndex].hold_qty > 0)
-            {
-                next_selectedProducts[qtyUpdateIndex].hold_qty = result;
-            }
-        setSelectedProducts(next_selectedProducts);
+        let next_selectedProducts = [...selectedProducts];
+        if (qtyUpdateIndex >= 0 && qtyUpdateIndex < next_selectedProducts.length)
+        {
+            next_selectedProducts[qtyUpdateIndex].qty = parseInt(result);
+            if(next_selectedProducts[qtyUpdateIndex].hold_qty != undefined 
+                && next_selectedProducts[qtyUpdateIndex].hold_qty  > 0)
+                {
+                    next_selectedProducts[qtyUpdateIndex].hold_qty = parseInt(result);
+                }
+            setSelectedProducts(next_selectedProducts);
+        }
+        
         setIsOpen(false);
     }
 
@@ -105,7 +112,7 @@ const NewPosOrder = () => {
          * Fetches products from the API and saves into indexDB.
          */
         let pageIndex = 1;
-        const fetchProducts = async (pageIndex) => {
+        const fetchProducts = async (pageIndex:any) => {
             const url = `${process.env.NEXT_PUBLIC_API_HOST}/api-backend/Product/GetAllPOSProduct?pageIndex=${pageIndex - 1}
       &pageSize=100&warehouseId=${warehouseId}`;
             const product_response = await fetch(url, {
@@ -225,7 +232,7 @@ const NewPosOrder = () => {
             return () => clearTimeout(delayDebounceFn);
         }, [searchHoldBill]);
 
-    const handleFunctionKeyPress = (event) => {
+    const handleFunctionKeyPress = (event: any) => {
         // Check if the pressed key is a function key
         if(event.key == "F6")
         {
@@ -245,7 +252,7 @@ const NewPosOrder = () => {
         let totalDiscount = 0;
 
         selectedProducts.forEach((product, index) => {
-            let qty = product.qty ? parseInt(product.qty) : 1;
+            let qty = product.qty ? product.qty : 1;
             if(product.hold_qty != undefined && product.hold_qty > 0)
             {
                 qty=product.hold_qty;
@@ -273,7 +280,7 @@ const NewPosOrder = () => {
     };
 
     /* This function is used to add hold bill to cart by id*/
-    const shiftHoldBillToCart= async (CustomerId)=>{
+    const shiftHoldBillToCart= async (CustomerId: any)=>{
         const holdbillsResponse = await getHoldBillsById(CustomerId);
         setSelectedCustomer(CustomerId); 
         getCustomerById(CustomerId).then((obj_cust)=>{
@@ -285,11 +292,13 @@ const NewPosOrder = () => {
            
         })
         let newproduct_fromHold=[];
-        holdbillsResponse.map((holdbill, index) => {           
-           getProductById(holdbill.ProductId).then((productDetail) =>{               
+        holdbillsResponse.map((holdbill: any, index: any) => {           
+           getProductById(holdbill.ProductId).then((productDetail) =>{     
+            console.log("productDetail");
+            console.log(productDetail);
                 if(productDetail != undefined && productDetail != null && productDetail.length > 0)
                 {
-                    if(productDetail.in_stock)
+                    if(productDetail[0].in_stock)
                     {
                         productDetail[0]["hold_qty"]=holdbill.Quantity;
                         newproduct_fromHold.push(productDetail[0]);
@@ -303,9 +312,9 @@ const NewPosOrder = () => {
                     }
                 }
                 if(newproduct_fromHold.length >= holdbillsResponse.length)
-                    {
-                        setSelectedProducts(newproduct_fromHold);
-                    }    
+                {
+                    setSelectedProducts(newproduct_fromHold);
+                }    
            }) 
                  
         })        
@@ -321,9 +330,9 @@ const NewPosOrder = () => {
  * Removes a product from the selected products list.
  * @param {string} id - The id of the product to be removed.
  */
-    const removeProduct = (id) => {
+    const removeProduct = (id: any) => {
         setSelectedProducts(selectedProducts.filter((product) => product.id !== id));
-        if(selectedCustomer != undefined)
+        if(selectedCustomer != undefined && selectedCustomer > 0)
         {
             deleteHoldBillByCustomerIdByProductId(selectedCustomer,id);
         }
@@ -343,7 +352,7 @@ const NewPosOrder = () => {
             if(selectedProducts.length > 0)
             {
                 // If a customer is not selected, do a guest login and store the token
-                if (!selectedCustomer) {
+                if (selectedCustomer == 0) {
                     console.log("selectedCustomer:", selectedCustomer);
                     let responsedata = await guestLogin();
                     setGuestToken(responsedata.token); // Store the token for future use
@@ -415,7 +424,7 @@ const NewPosOrder = () => {
                     saveHoldBill(holdResponse.shopping_cart_items);
                     
                     // Clear the selected products
-                    setSelectedCustomer(null);
+                    setSelectedCustomer(0);
                     setSelectedProducts([]);
                 }
             }
@@ -506,7 +515,7 @@ const NewPosOrder = () => {
                     deleteHoldBillByCustomerId(customerid);
                     
                     // Clear the selected products
-                    setSelectedCustomer(null);
+                    setSelectedCustomer(0);
                     setSelectedProducts([]);
                     toast.success("Order created successfully.", {
                         position: "top-right",
@@ -550,7 +559,7 @@ const NewPosOrder = () => {
      
 
     //Search Hold Bills By query
-    const searchHoldBills = async (query) =>
+    const searchHoldBills = async (query: any) =>
         {
             try
             {
@@ -585,7 +594,7 @@ const NewPosOrder = () => {
 
     /* This function is used to Reorder order items by order id.
     This function called from OrdersComponent page */
-    const handle_ReOrder = async(obj_order)=>{
+    const handle_ReOrder = async(obj_order: any)=>{
         setSelectedCustomer(obj_order.customer_id); 
         await getCustomerById(obj_order.customer_id).then((obj_cust)=>{
             //console.log(obj_cust);
@@ -595,7 +604,7 @@ const NewPosOrder = () => {
         setSelectedProducts([]);
         let newproduct_fromHold=[];
         await getOrderItemsByOrderIdFromApi(token,obj_order.id).then((obj_oitmResp)=>{
-            obj_oitmResp.map((obj_items, orditem_index) => {   
+            obj_oitmResp.map((obj_items: any, orditem_index: any) => {   
                 getProductDetail(token,obj_items.product_id,warehouseId).then((obj_PD_response)=>{
                      if(obj_PD_response != undefined && obj_PD_response != null && obj_PD_response.id > 0)
                         {
@@ -633,6 +642,10 @@ const NewPosOrder = () => {
 
     const PrintInvoice =() =>{
         setIsInvoicePopupOpen(true);
+    }
+
+    const handleCashRegisterModel=()=>{
+        setIsCashRegisterModel(false);
     }
 
 
@@ -698,11 +711,11 @@ const NewPosOrder = () => {
                                                     <td className="border px-2 py-2">{product.sku}</td>
                                                     <td className="border px-2 py-2 w-45">{product.name}</td>
                                                     <td className="border px-2 py-2 w-20"> <input type="number"
-                                                        readOnly="readonly"
+                                                        readOnly={true}
                                                         id={`qty${index}`}
                                                         name={`qty${index}`}
                                                         value={qty}
-                                                        onClick={() => { setQtyupdateIndex(index), setIsOpen(true), setResult(qty) }} ></input></td>
+                                                        onClick={() => { setQtyupdateIndex(index), setIsOpen(true), setResult(qty.toString()) }} ></input></td>
                                                     <td className="border px-2 py-2">{product.price}</td>
                                                     <td className="border px-2 py-2">
                                                         {/* <input
@@ -913,7 +926,7 @@ const NewPosOrder = () => {
                                     </a>
                                 </li>
                                 <li>
-                                    <a href="#" id="cashcontrol_modal" title="Cash Control" className="flex items-center space-x-2">
+                                    <a href="#" id="cashcontrol_modal" title="Cash Control" className="flex items-center space-x-2" onClick={()=> setIsCashRegisterModel(true)}>
                                         <img
                                             src="https://cdn.vasyerp.com/assets/image/Cash-Control.svg"
                                             id="cashControlImage"
@@ -962,7 +975,11 @@ const NewPosOrder = () => {
                         </div>
                         <div className="customer-highlights">
                             <p>
-                                <span className="font-weight-bold">Last Bill No.:</span> <span id="bill_last_no">{customerLastOrder != undefined && customerLastOrder != null && customerLastOrder.LatestOrder != null ? "ORD"+customerLastOrder.LatestOrder.CustomOrderNumber : 0}</span>
+                                <span className="font-weight-bold">Last Bill No.:</span> 
+                                <span id="bill_last_no">{customerLastOrder != undefined 
+                                && customerLastOrder != null 
+                                && customerLastOrder.LatestOrder != null ? "ORD"+customerLastOrder.LatestOrder.CustomOrderNumber : 0}
+                                </span>
                             </p>
                             <p>
                                 <span className="font-weight-bold">Last Bill Amount:</span>{" "}
@@ -1052,7 +1069,7 @@ const NewPosOrder = () => {
                 
             </Modal.Header>
                 <Modal.Body className="p-1">
-                    <OrdersComponent setIsOrderPopupOpen={setIsOrderPopupOpen} handle_ReOrder={handle_ReOrder}></OrdersComponent>
+                    <OrdersComponent handle_ReOrder={handle_ReOrder}></OrdersComponent>
                 </Modal.Body>
             </Modal>
             <div id="holdbilldiv" className={`holdbilldiv right-sidebarpopup mb-2 ${isSidebarOpen ? 'open' : 'closed'}`}>
@@ -1107,7 +1124,7 @@ const NewPosOrder = () => {
                     </ul>
                 </div>
             </div>
-
+ {/* Start Invoice Popup Model  */}
             <Modal className="" show={isInvoicePopupOpen}>
             <Modal.Header>
             <div className="col-12">
@@ -1124,6 +1141,14 @@ const NewPosOrder = () => {
                     <OrderReceipt></OrderReceipt>
                 </Modal.Body>
             </Modal>
+
+            {/* End Invoice Popup Model  */}
+
+            {/* Start Sales Register Popup Model  */}
+           
+            <CashRegisterNewModal show={isCashRegisterModel} handleClose={handleCashRegisterModel}></CashRegisterNewModal>
+
+            {/* End Sales Register Popup Model  */}
             <ToastContainer></ToastContainer>
         </PosLayout>
 

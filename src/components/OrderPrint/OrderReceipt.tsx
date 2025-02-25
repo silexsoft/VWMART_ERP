@@ -5,8 +5,8 @@ const OrderReceipt = () => {
   const printRef = useRef();
   const handlePrint = () => {
     const content = printRef.current;
-    const printWindow = window.open("", "", "width=500,height=600");
-    printWindow.document.write(`
+    let printWindow = window.open("", "", "width=500,height=600");
+    printWindow?.document.write(`
       <html>
         <head>
           <title>Invoice</title>
@@ -79,16 +79,16 @@ const OrderReceipt = () => {
             }
           </style>
         </head>
-        <body>${content.innerHTML}</body>
+        <body>${content != undefined ? content : ""}</body>
       </html>
     `);
-    printWindow.document.close();
-    printWindow.print();
+    printWindow?.document.close();
+    printWindow?.print();
   };
 
   return (
     <div className="page">
-      <div ref={printRef} className="invoice">
+      <div className="invoice">
         <div className=" text-center header">
           <h1>VW-Mart</h1>
           <p>Shop No-160B, Khariya Pokhra, Near Little Flower</p>

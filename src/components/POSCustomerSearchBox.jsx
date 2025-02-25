@@ -100,15 +100,18 @@ const POSCustomerSearchBox = ({ setSelectedCustomer,
      
         const formData = new FormData(event.target);
         await createPosCustomer(token,formData,warehouseId).then((obj_createCustomerResp)=>{
-            console.log(obj_createCustomerResp);
-            if(obj_createCustomerResp != undefined && obj_createCustomerResp.phone != undefined && obj_createCustomerResp.phone != "")
+            
+            if(obj_createCustomerResp != undefined && obj_createCustomerResp.length > 0)
             {
                 saveCustomers(obj_createCustomerResp);
+                selectCustomer(obj_createCustomerResp[0]);
+                setIsNewCustomerPopupOpen(false);
                 toast.success("Customer created successfully.", {
                                 position: "top-right",
                                 autoClose: 5000,
                                 toastId:`customer1`
                               });
+                              
             }
             else{
                 toast.error(obj_createCustomerResp, {
