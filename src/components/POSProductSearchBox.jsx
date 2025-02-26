@@ -6,7 +6,7 @@ import { updateSpecificProduct } from '@/utils/productService';
 import { useAuth } from "@/app/context/AuthContext";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-const POSProductSearchBox = ({ setSelectedProducts }) =>
+const POSProductSearchBox = ({ selectedProducts,setSelectedProducts }) =>
 {
   const { token, warehouseId } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
@@ -50,14 +50,32 @@ const POSProductSearchBox = ({ setSelectedProducts }) =>
 
   const addProduct = (product) =>
   {
-    
+   console.log(selectedProducts);
     getProductDetail(token,product.id,warehouseId).then((obj_response)=>{
       updateSpecificProduct(obj_response);
       product=obj_response;
       if(product.in_stock )
       {
-        setSelectedProducts((prev) =>
-          prev.some((p) => p.id === product.id) ? prev : [...prev, product]
+        setSelectedProducts((prev) =>{
+            // Check if the product already exists in the list
+            const existingProduct = prev.find((p) => p.id === product.id);
+            if (existingProduct)
+            {
+              if (existingProduct.qty >= product.maxQty) {
+                // Show a toast notification for max quantity
+                toast.error(`Maximum order quantity of ${product.maxQty} reached for ${product.name}`, {
+                  position: "top-right",
+                  autoClose: 5000,
+                  toastId:`out_of_stock_${product.id}`
+                });
+                return prev; // Do not update the quantity
+              }
+              return  prev.map((p) => (p.id === product.id && product.stock_quantity > p.qty && product.order_maximum_quantity > p.qty) ? { ...p, qty: p.qty+1  } : p);
+            }
+            return [...prev, { ...product, qty: product.qty || product.order_minimum_quantity > 0 ? product.order_minimum_quantity : 1 }];
+        }
+          
+         
         );
       }
       else{

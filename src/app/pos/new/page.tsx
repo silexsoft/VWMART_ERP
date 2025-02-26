@@ -12,9 +12,9 @@ import { guestLogin, holdOrder,createOrder, getholdbills,getOrderItemsByOrderIdF
 import OrdersComponent from "@/components/Orders/OrdersComponent";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import OrderReceipt from "@/components/OrderPrint/OrderReceipt";
 import CashRegisterNewModal from "@/components/CashRegisterModal";
 import { AnyObject, object } from "yup";
+import AddPaymentNewModal from "@/components/AddPaymentModal";
 
 const NewPosOrder = () => {
     const { token, logout, warehouseId } = useAuth();
@@ -23,8 +23,10 @@ const NewPosOrder = () => {
     const [customerLastOrder, setCustomerLastOrder] = useState<AnyObject>();
     const [customers, setCustomers] = useState([]);//used for full custoner information
     const [isOpen, setIsOpen] = useState(false);
-    const [isInvoicePopupOpen, setIsInvoicePopupOpen] = useState(false);
+   
     const [isCashRegisterModel, setIsCashRegisterModel]=useState(false);
+    const [isPaymentRegisterModel, setIsPaymentRegisterModel]=useState(false);
+    
     const [isOrderPopupOpen, setIsOrderPopupOpen] = useState(false)
     const [qtyUpdateIndex, setQtyupdateIndex] = useState(0)
     const [result, setResult] = useState('');
@@ -294,8 +296,7 @@ const NewPosOrder = () => {
         let newproduct_fromHold=[];
         holdbillsResponse.map((holdbill: any, index: any) => {           
            getProductById(holdbill.ProductId).then((productDetail) =>{     
-            console.log("productDetail");
-            console.log(productDetail);
+            
                 if(productDetail != undefined && productDetail != null && productDetail.length > 0)
                 {
                     if(productDetail[0].in_stock)
@@ -324,7 +325,7 @@ const NewPosOrder = () => {
     useEffect(() => {
         calculateTotals();
 
-    }, [selectedProducts]);
+    }, [discounts,selectedProducts]);
 
     /**
  * Removes a product from the selected products list.
@@ -641,20 +642,22 @@ const NewPosOrder = () => {
     }
 
     const PrintInvoice =() =>{
-        setIsInvoicePopupOpen(true);
+        
     }
 
     const handleCashRegisterModel=()=>{
         setIsCashRegisterModel(false);
     }
-
+    const handlePaymentRegisterModel=()=>{
+        setIsPaymentRegisterModel(false);
+    }
 
     return (
         <PosLayout>
             <div className="flex flex-col pos-left">
                 <div className="row">
                     <div className="col-md-4">
-                        <POSProductSearchBox setSelectedProducts={setSelectedProducts} />
+                        <POSProductSearchBox selectedProducts={selectedProducts} setSelectedProducts={setSelectedProducts} />
                     </div>
                     <div className="col-md-4">
                         <POSCustomerSearchBox setSelectedCustomer={setSelectedCustomer} 
@@ -674,6 +677,7 @@ const NewPosOrder = () => {
                         <table className="w-full border-collapse border carttable">
                                     <thead>
                                         <tr className="bg-black text-center text-white">
+                                            <th className="border px-2 py-2 ">#</th>
                                             <th className="border px-2 py-2 ">Itemcode</th>
                                             <th className="border px-2 py-2 w-45">Product</th>
                                             <th className="border px-2 py-2 w-20">Qty</th>
@@ -708,6 +712,7 @@ const NewPosOrder = () => {
                                             const unitCost = product.price - discount;
                                             const netAmount = unitCost * qty; return (
                                                 <tr key={product.id}>
+                                                    <td className="border px-2 py-2">{index+1}</td>
                                                     <td className="border px-2 py-2">{product.sku}</td>
                                                     <td className="border px-2 py-2 w-45">{product.name}</td>
                                                     <td className="border px-2 py-2 w-20"> <input type="number"
@@ -815,13 +820,7 @@ const NewPosOrder = () => {
                                             <h6 id="tax_amount">0</h6>
                                             <span style={{ fontWeight: 700 }}>Tax Amount</span>
                                         </div>
-                                        <div className="col border-right">
-                                            <h6 id="additional_charge_sub_total">0</h6>
-                                            <a href="#" style={{ color: "#000" }} className="add-charge-modals" title="Add Additional Charge">
-                                                <span style={{ fontWeight: 700 }}>Add.Charges</span>&nbsp;
-                                                <i className="fa fa-plus"></i>
-                                            </a>
-                                        </div>
+                                      
                                         <div className="col border-right">
                                             <h6 id="total_discount_amount">{totaldiscount}</h6>
                                             <span style={{ fontWeight: 700 }}>Discount</span>
@@ -911,9 +910,9 @@ const NewPosOrder = () => {
                                     </a>
                                 </li>
                                 <li>
-                                    <a href="#" id="expense_modal" title="Add Payment">
+                                    <button id="expense_modal" title="Add Payment" onClick={()=> setIsPaymentRegisterModel(true)}>
                                         <i className="fa fa-money" aria-hidden="true"></i> Add Payment
-                                    </a>
+                                    </button>
                                 </li>
                                 <li>
                                     <a href="#" title="Credit Notes" id="creditnote_view">
@@ -1124,31 +1123,15 @@ const NewPosOrder = () => {
                     </ul>
                 </div>
             </div>
- {/* Start Invoice Popup Model  */}
-            <Modal className="" show={isInvoicePopupOpen}>
-            <Modal.Header>
-            <div className="col-12">
-    <h4 className="text-xl font-semibold text-black dark:text-white float-left">
-      Order Invoice
-    </h4>
-    <div  className="text-xl font-semibold text-black float-right">
-    <a onClick={()=> setIsInvoicePopupOpen(false)}><i className="fa fa-close"></i></a>
-        </div>
-  </div>
-                
-            </Modal.Header>
-                <Modal.Body>
-                    <OrderReceipt></OrderReceipt>
-                </Modal.Body>
-            </Modal>
+ 
 
-            {/* End Invoice Popup Model  */}
-
-            {/* Start Sales Register Popup Model  */}
-           
+            {/* Start Cash Register Popup Model  */}           
             <CashRegisterNewModal show={isCashRegisterModel} handleClose={handleCashRegisterModel}></CashRegisterNewModal>
+            {/* End Cash Register Popup Model  */}
 
-            {/* End Sales Register Popup Model  */}
+            {/* Start Payment Register Popup Model  */}           
+            <AddPaymentNewModal show={isPaymentRegisterModel} handleClose={handlePaymentRegisterModel}></AddPaymentNewModal>
+            {/* End Payment Register Popup Model  */}
             <ToastContainer></ToastContainer>
         </PosLayout>
 

@@ -5,6 +5,7 @@ import { useAuth } from "@/app/context/AuthContext";
 import {getStatusColor,orderStatusMap,paymentStatusMap} from "@/utils/commonConstant";
 import { useRouter } from 'next/navigation';
 import { bool } from "yup";
+import OrderReceipt from "../OrderPrint/OrderReceipt";
 interface OrdersComponentProps { 
   handle_ReOrder: (order: any) => void;
 }
@@ -16,6 +17,8 @@ const OrdersComponent: React.FC<OrdersComponentProps> = ({ handle_ReOrder }) => 
     const [totalPages, setTotalPages] = useState(0);   // Tracks the total number of pages
     const [orderSeries, setorderSeries] = useState(0);
     const [totalOrder, settotalOrder] = useState(0);
+    const [printOrderFor, setPrintOrderFor] = useState([]);
+    const [isOrderReceiptModel, setIsOrderReceiptModel] = useState(false);
     const pageSize = 25;   
      const router = useRouter();                      
 
@@ -65,6 +68,17 @@ const getAllOrders= async (pageIndex: number)=>{
     useEffect(() => {
         getAllOrders(currentPage); // Fetch orders when the page index changes
     }, [token, currentPage]);
+
+
+    const print_Order=(order:any)=>{
+      setPrintOrderFor(order);
+      console.log(order);
+      setIsOrderReceiptModel(true)
+    }
+
+    const handleOrderReceiptModel=()=>{
+      setIsOrderReceiptModel(false);
+  }
 
     return (
         <div className="flex flex-col gap-10">
@@ -153,7 +167,9 @@ const getAllOrders= async (pageIndex: number)=>{
             ₹ {Number(order.order_total).toFixed(2)}
             </td>
             <td className="px-4 py-2 text-sm text-black dark:text-white">
-                 <button onClick={()=> handle_ReOrder(order)}><i className="fa fa-edit"></i></button>
+                 <button onClick={()=> handle_ReOrder(order)}><i className="fa fa-edit"></i></button> &nbsp;&nbsp;
+                 
+                 <button onClick={()=> print_Order(order)}><i className="fa fa-print"></i></button>
             </td>
           </tr>
         ))}
@@ -161,6 +177,7 @@ const getAllOrders= async (pageIndex: number)=>{
     </table>
   </div>
 </div>
+<OrderReceipt show={isOrderReceiptModel} handleClose={handleOrderReceiptModel} orderDetail={printOrderFor}></OrderReceipt>
                 <Pagination
                     currentPage={currentPage}
                     totalPages={totalPages}
