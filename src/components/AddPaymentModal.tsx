@@ -206,12 +206,12 @@ const AddPaymentNewModal: React.FC<AddPaymentModalProps> = ({
 
       <Modal.Body>
         <Form onSubmit={handleSubmit}>
-          <div className="row">
-            <div className="form-group row">
+          <div className="row" id="addpayment">
+            <div className="form-group row Voucher">
               <label className="col-lg-12 col-md-12 col-sm-12">
                 Select Voucher Type
               </label>
-              <div className="col-lg-12 col-md-12 col-sm-12">
+              <div className="col-lg-12 col-md-12 col-sm-12 inVoucher">
                 <div className="form-group row mb-0">
                   <div className="col input-group p-0">
                     <div className="m-widget4">
@@ -262,11 +262,11 @@ const AddPaymentNewModal: React.FC<AddPaymentModalProps> = ({
               </div>
             </div>
 
-            <div className="form-group row">
+            <div className="form-group row payment">
               <label className="col-lg-12 col-md-12 col-sm-12">
                 Select Payment Type
               </label>
-              <div className="col-lg-12 col-md-12 col-sm-12">
+              <div className="col-lg-12 col-md-12 col-sm-12 inpayment">
                 <div className="form-group row mb-0">
                   <div className="col input-group p-0">
                     <div className="m-widget4">
@@ -302,7 +302,7 @@ const AddPaymentNewModal: React.FC<AddPaymentModalProps> = ({
               </div>
             </div>
 
-            <div className="form-group row">
+            <div className="form-group row dropdwons">
               <div className="col-lg-12 col-md-12 col-sm-12">
                 <div className="col-6 form-group">
                   <label className="mb-0">
@@ -314,12 +314,7 @@ const AddPaymentNewModal: React.FC<AddPaymentModalProps> = ({
                       id="PartyName"
                       name="PartyName"
                     >
-                      <option value="">Select Party</option>
-                      {categories.map((category) => (
-                        <option key={category.id} value={category.id}>
-                          {category.name}
-                        </option>
-                      ))}
+                      <option value="">Select Party</option>                      
                     </select>
                   </Form.Group>
                 </div>
@@ -334,12 +329,7 @@ const AddPaymentNewModal: React.FC<AddPaymentModalProps> = ({
                       id="Sales"
                       name="Sales"
                     >
-                      <option value="">Select Sales</option>
-                      {categories.map((category) => (
-                        <option key={category.id} value={category.id}>
-                          {category.name}
-                        </option>
-                      ))}
+                      <option value="">Select Sales</option>                      
                     </select>
                   </Form.Group>
                 </div>
@@ -354,19 +344,14 @@ const AddPaymentNewModal: React.FC<AddPaymentModalProps> = ({
                       id="PaymentModeName"
                       name="PaymentModeName"
                     >
-                      <option value="">Payment Mode</option>
-                      {categories.map((category) => (
-                        <option key={category.id} value={category.id}>
-                          {category.name}
-                        </option>
-                      ))}
+                      <option value="">Payment Mode</option>                      
                     </select>
                   </Form.Group>
                 </div>
               </div>
             </div>
 
-            <div className="col-lg-12 col-md-12 col-sm-12">
+            <div className="col-lg-12 col-md-12 col-sm-12 totalpayment">
               <div className="form-group row mb-0">
                 <div className="col-lg-4 col-md-4 col-sm-4">
                   <div className="form-group row m--margin-top-5">
@@ -392,7 +377,7 @@ const AddPaymentNewModal: React.FC<AddPaymentModalProps> = ({
                     </div>
                   </div>
                 </div>
-                <div className="col-lg-4 col-md-4 col-sm-4">
+                <div className="col-lg-4 col-md-4 col-sm-4 paid">
                   <div className="form-group row m--margin-top-5">
                     <label className="col-md-12">Paid Amount</label>
                     <div className="col-lg-12 col-md-12 col-sm-12">
@@ -416,7 +401,7 @@ const AddPaymentNewModal: React.FC<AddPaymentModalProps> = ({
                     </div>
                   </div>
                 </div>
-                <div className="col-lg-4 col-md-4 col-sm-4">
+                <div className="col-lg-4 col-md-4 col-sm-4 pending">
                   <div className="form-group row m--margin-top-5">
                     <label className="col-md-12">Pending Amount</label>
                     <div className="col-lg-12 col-md-12 col-sm-12">
@@ -443,7 +428,7 @@ const AddPaymentNewModal: React.FC<AddPaymentModalProps> = ({
               </div>
             </div>
 
-            <div className="col-lg-12 col-md-12 col-sm-12">
+            <div className="col-lg-12 col-md-12 col-sm-12 kasar">
               <div className="form-group row mb-0">
                 <div className="col-lg-4 col-md-4 col-sm-4">
                   <div className="form-group row m--margin-top-5">
@@ -469,7 +454,7 @@ const AddPaymentNewModal: React.FC<AddPaymentModalProps> = ({
                     </div>
                   </div>
                 </div>
-                <div className="col-lg-4 col-md-4 col-sm-4">
+                <div className="col-lg-4 col-md-4 col-sm-4 amt">
                   <div className="form-group row m--margin-top-5">
                     <label className="col-md-12">Amount</label>
                     <div className="col-lg-12 col-md-12 col-sm-12">
@@ -496,19 +481,11 @@ const AddPaymentNewModal: React.FC<AddPaymentModalProps> = ({
               </div>
             </div>
 
-            <div className="col-lg-12 col-md-12 col-sm-12">
+            <div className="col-lg-12 col-md-12 col-sm-12 remark">
               <div className="form-group row mb-0">
                 <label className="col-md-12">Remark</label>
                 <div className="col-lg-12 col-md-12 col-sm-12">
-                  <div className="input-group">
-                    <div className="input-group-prepend">
-                      <span className="input-group-text" id="basic-addon1">
-                        <i
-                          className="fa fa-inr currency_style"
-                          aria-hidden="true"
-                        ></i>
-                      </span>
-                    </div>
+                  <div className="input-group">                    
                     <Form.Group controlId="formRemark">
                       <Form.Control
                         type="textarea"
@@ -523,9 +500,11 @@ const AddPaymentNewModal: React.FC<AddPaymentModalProps> = ({
             </div>
           </div>
 
+<div className="col-lg-12 col-md-12 col-sm-12 bttnsave">
           <Button type="submit" variant="primary">
             Save
           </Button>
+          </div>
         </Form>
       </Modal.Body>
     </Modal>

@@ -19,13 +19,12 @@ const CashRegisterNewModal: React.FC<CashRegisterModalProps> = ({
   const [formData, setFormData] = useState({
     name: "",
     description: "",
-    //image_url: "",
-    image_file: null as File | null,
     OpeningCash: "",
     CashPayment: "",
     ChequePayment: "",
     CardPayment: "",
     BankTransfer: "",
+    BankAccount:"",
     UPIPayment: "",
     WalletPayment: "",
     SalesReturn: "",
@@ -73,23 +72,16 @@ const CashRegisterNewModal: React.FC<CashRegisterModalProps> = ({
       .catch((error) => console.error("Error fetching categories:", error));
   }, [token]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]; // Get the selected file
-    if (file) {
-      // Optional: Upload the file to a server or create an object URL
-      const fileUrl = URL.createObjectURL(file); // Temporary local URL for preview
-      setFormData((prevData) => ({
-        ...prevData,
-        image_file: file, // Save the file object for upload
-        //image_url: fileUrl, // Save the file's local URL for preview
-      }));
-    }
-  };
+
 
   const handleChange = (event: any) => {
     const newValue = event.target.value;
     if (/^\d*$/.test(newValue)) {
-      setFormData(newValue);
+      //setFormData(newValue);
+      setFormData((prevData) => ({
+        ...prevData,
+        BankAccount: newValue,
+      }));
     }
   };
 
@@ -105,128 +97,24 @@ const CashRegisterNewModal: React.FC<CashRegisterModalProps> = ({
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
     const { name, value } = e.target;
+    console.log(name +"="+ value);
     setFormData((prevData) => ({
       ...prevData,
       [name]: value,
     }));
   };
 
-  const handleCategoryChange = (
-    event: React.ChangeEvent<HTMLSelectElement>,
-  ) => {
-    const selectedId = event.target.value;
-    setSelectedCategoryId(selectedId);
 
-    const selectedCategory = categories.find(
-      (category) => category.id === selectedId,
-    );
-    setSelectedCategoryName(selectedCategory ? selectedCategory.name : "");
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
+    console.log(formData);
     try {
-      if (formData.image_file) {
-        try {
-          const file = formData.image_file;
-          const mimeType = file.type; // Get the MIME type (e.g., "image/png")
-          const seoFilename = file.name.split(".")[0]; // Get the filename without extension
-
-          const uploadUrl = `${process.env.NEXT_PUBLIC_API_HOST}/api-backend/Picture/InsertPicture?mimeType=${encodeURIComponent(
-            mimeType,
-          )}&seoFilename=${encodeURIComponent(
-            seoFilename,
-          )}&isNew=true&validateBinary=true`;
-
-          const formDataToSend = new FormData();
-          formDataToSend.append("fileBinary", file); // Attach the file
-
-          const response = await fetch(uploadUrl, {
-            method: "PUT",
-            headers: {
-              Authorization: token ? `Bearer ${token}` : "", // Use your token
-              accept: "application/json",
-            },
-            body: formDataToSend, // Send the FormData object
-          });
-
-          if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
-          }
-
-          const data = await response.json();
-          console.log("data id uploaded successfully:", data.id);
-
-          const newCategoryData = {
-            ...formData,
-            parent_category_id: selectedCategoryId || null,
-            published: true,
-            picture_id: data.id, // Use data.id here
-          };
-
-          console.log(
-            "before  category created successfully:",
-            newCategoryData,
-          );
-
-          const responses = await fetch(
-            `${process.env.NEXT_PUBLIC_API_HOST}/api-backend/Category/Create`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: token ? `Bearer ${token}` : "",
-              },
-              body: JSON.stringify(newCategoryData),
-            },
-          );
-
-          if (!responses.ok) {
-            throw new Error(`Error creating category: ${responses.statusText}`);
-          }
-          const createdCategory = await responses.json();
-          console.log("New category created successfully:", createdCategory);
-          location.reload();
-          // Close the modal after successful submission
-          handleClose();
-        } catch (error) {
-          console.error("Error uploading image:", error);
-          alert("Failed to upload the image.");
-        }
-      } else {
-        const newCategoryData = {
-          ...formData,
-          parent_category_id: selectedCategoryId || null,
-          published: true,
-        };
-
-        console.log("before  category created successfully:", newCategoryData);
-
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_HOST}/api-backend/Category/Create`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: token ? `Bearer ${token}` : "",
-            },
-            body: JSON.stringify(newCategoryData),
-          },
-        );
-
-        if (!response.ok) {
-          throw new Error(`Error creating category: ${response.statusText}`);
-        }
-
-        const createdCategory = await response.json();
-        console.log("New category created successfully:", createdCategory);
-        location.reload();
-        // Close the modal after successful submission
-        handleClose();
-      }
+      //location.reload();
+      // Close the modal after successful submission
+      //handleClose();
     } catch (error) {
-      console.error("Error during submission:", error);
+      console.error("Error uploading image:", error);
     }
   };
 
@@ -418,8 +306,8 @@ const CashRegisterNewModal: React.FC<CashRegisterModalProps> = ({
                           min="0"
                           value={formData.Rs1}
                           className="form-control form-control-sm"
-                          name="1rs"
-                          onChange={handleChange}
+                          name="Rs1"
+                          onChange={handleInputChange}
                           onKeyDown={handleKeyDown}
                         />
                       </td>
@@ -444,8 +332,8 @@ const CashRegisterNewModal: React.FC<CashRegisterModalProps> = ({
                           min="0"
                           value={formData.Rs2}
                           className="form-control form-control-sm"
-                          name="2rs"
-                          onChange={handleChange}
+                          name="Rs2"
+                          onChange={handleInputChange}
                           onKeyDown={handleKeyDown}
                         />
                       </td>
@@ -470,8 +358,8 @@ const CashRegisterNewModal: React.FC<CashRegisterModalProps> = ({
                           min="0"
                           value={formData.Rs5}
                           className="form-control form-control-sm"
-                          name="5rs"
-                          onChange={handleChange}
+                          name="Rs5"
+                          onChange={handleInputChange}
                           onKeyDown={handleKeyDown}
                         />
                       </td>
@@ -497,7 +385,7 @@ const CashRegisterNewModal: React.FC<CashRegisterModalProps> = ({
                           value={formData.Rs10}
                           className="form-control form-control-sm"
                           name="Rs10"
-                          onChange={handleChange}
+                          onChange={handleInputChange}
                           onKeyDown={handleKeyDown}
                         />
                       </td>
@@ -523,7 +411,7 @@ const CashRegisterNewModal: React.FC<CashRegisterModalProps> = ({
                           value={formData.Rs20}
                           className="form-control form-control-sm"
                           name="Rs20"
-                          onChange={handleChange}
+                          onChange={handleInputChange}
                           onKeyDown={handleKeyDown}
                         />{" "}
                       </td>
@@ -549,7 +437,7 @@ const CashRegisterNewModal: React.FC<CashRegisterModalProps> = ({
                           value={formData.Rs50}
                           className="form-control form-control-sm"
                           name="Rs50"
-                          onChange={handleChange}
+                          onChange={handleInputChange}
                           onKeyDown={handleKeyDown}
                         />
                       </td>
@@ -575,7 +463,7 @@ const CashRegisterNewModal: React.FC<CashRegisterModalProps> = ({
                           value={formData.Rs100}
                           className="form-control form-control-sm"
                           name="Rs100"
-                          onChange={handleChange}
+                          onChange={handleInputChange}
                           onKeyDown={handleKeyDown}
                         />
                       </td>
@@ -601,7 +489,7 @@ const CashRegisterNewModal: React.FC<CashRegisterModalProps> = ({
                           value={formData.Rs200}
                           className="form-control form-control-sm"
                           name="Rs200"
-                          onChange={handleChange}
+                          onChange={handleInputChange}
                           onKeyDown={handleKeyDown}
                         />{" "}
                       </td>
@@ -627,7 +515,7 @@ const CashRegisterNewModal: React.FC<CashRegisterModalProps> = ({
                           value={formData.Rs500}
                           className="form-control form-control-sm"
                           name="Rs500"
-                          onChange={handleChange}
+                          onChange={handleInputChange}
                           onKeyDown={handleKeyDown}
                         />{" "}
                       </td>
@@ -657,8 +545,8 @@ const CashRegisterNewModal: React.FC<CashRegisterModalProps> = ({
                   className="form-control m-select2"
                   id="BankAccount"
                   name="BankAccount"
-                  // onChange={handleBankAccountChange}
-                  // value={formData.BankAccount}
+                  value={formData.BankAccount}
+                  onChange={handleChange}
                 >
                   <option value="">Select Bank</option>
                   {categories.map((category) => (
@@ -674,8 +562,8 @@ const CashRegisterNewModal: React.FC<CashRegisterModalProps> = ({
                 <Form.Control
                   type="text"
                   name="BankTransferAmount"
-                  onChange={handleChange}
-                  //value={formData.BankTransferAmount}
+                  onChange={handleInputChange}
+                  value={formData.BankTransferAmount}
                 />
               </Form.Group>
 
@@ -684,8 +572,8 @@ const CashRegisterNewModal: React.FC<CashRegisterModalProps> = ({
                 <Form.Control
                   type="text"
                   name="CashFlow"
-                  onChange={handleChange}
-                  //value={formData.CashFlow}
+                  onChange={handleInputChange}
+                  value={formData.CashFlow}
                 />
               </Form.Group>
 
@@ -694,8 +582,8 @@ const CashRegisterNewModal: React.FC<CashRegisterModalProps> = ({
                 <Form.Control
                   type="text"
                   name="TotalCashLeft"
-                  onChange={handleChange}
-                  // value={formData.TotalCashLeft}
+                  onChange={handleInputChange}
+                  value={formData.TotalCashLeft}
                 />
               </Form.Group>
 
@@ -705,7 +593,7 @@ const CashRegisterNewModal: React.FC<CashRegisterModalProps> = ({
                   type="text"
                   name="TotalPhysicalDrawer"
                   value={formData.TotalPhysicalDrawer}
-                  onChange={handleChange}
+                  onChange={handleInputChange}
                 />
               </Form.Group>
 
@@ -716,15 +604,17 @@ const CashRegisterNewModal: React.FC<CashRegisterModalProps> = ({
                   aria-rowspan={3}
                   name="ClosingNote"
                   value={formData.ClosingNote}
-                  onChange={handleChange}
+                  onChange={handleInputChange}
                 />
               </Form.Group>
             </div>
           </div>
-
-          <Button type="submit" variant="primary">
+<div className="col-lg-12 col-md-12 col-sm-12 text-center">
+<Button type="submit" variant="primary">
             Close Register
           </Button>
+</div>
+        
         </Form>
       </Modal.Body>
     </Modal>
