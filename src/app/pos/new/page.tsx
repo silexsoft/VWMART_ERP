@@ -43,6 +43,7 @@ const NewPosOrder = () => {
     const [holdBills, setHoldBills] = useState<any[]>([]);
     const [discountType, setDiscountType] = useState("amount");
     const [searchHoldBill, setSearchHoldBill] = useState("");
+    const [flatDiscount, setFlatDiscount] = useState(0);
 
     const handleDiscountChange = (index: any, value: any) => {
 
@@ -265,10 +266,13 @@ const NewPosOrder = () => {
         totalDiscount = parseFloat(totalDiscount.toFixed(2));
         totalMRP = parseFloat(totalMRP.toFixed(2));
 
-
+        // calculate flatdiscount if any applied and deduct it from total amount
+        // and add it to totaldiscount
+        let discountedTotal = totalAmount - flatDiscount;
+        totalDiscount = totalDiscount + flatDiscount;
         setTotalQuantity(totalQuantity);
         setTotalMRP(totalMRP);
-        setTotalAmount(totalAmount);
+        setTotalAmount(discountedTotal);
         setTotalDiscount(totalDiscount); // Update the total discount amount
     };
 
@@ -312,7 +316,7 @@ const NewPosOrder = () => {
     useEffect(() => {
         calculateTotals();
 
-    }, [discountType, discounts, selectedProducts]);
+    }, [flatDiscount, discountType, discounts, selectedProducts]);
 
     /**
  * Removes a product from the selected products list.
@@ -627,6 +631,11 @@ const NewPosOrder = () => {
         setIsPaymentRegisterModel(false);
     }
 
+    // round off values
+    const roundOffValue = (value) => {
+        return value % 1 >= 0.5 ? Math.ceil(value) : Math.floor(value);
+    };
+
     return (
         <PosLayout>
             <div className="flex flex-col pos-left">
@@ -803,8 +812,8 @@ const NewPosOrder = () => {
                                                 type="text"
                                                 id="flat_discount"
                                                 name="flatDiscount"
-                                                // value={flatDiscount}
-                                                // onChange={handleFlatDiscountChange}
+                                                value={flatDiscount}
+                                                onChange={(e) => setFlatDiscount(parseFloat(e.target.value) || 0)}
                                                 style={{ maxWidth: "70px" }}
                                                 className="form-control form-control-sm"
                                                 placeholder="Percentage"
@@ -818,14 +827,14 @@ const NewPosOrder = () => {
                                                 name="round_off"
                                                 id="round_off"
                                                 placeholder="Roundoff"
-                                                // value={roundOff}
+                                                value={(roundOffValue(totalAmount) - totalAmount).toFixed(2)}
                                                 // onChange={handleRoundOffChange}
                                                 style={{ marginBottom: ".5rem" }}
                                             />
                                             <span style={{ fontWeight: 700 }}>Round OFF</span>
                                         </div>
                                         <div className="col total">
-                                            <h4 style={{ color: "#00a4e5" }} className="mb-0 font-weight-bold" id="net_amount">{totalAmount.toFixed(2)}</h4>
+                                            <h4 style={{ color: "#00a4e5" }} className="mb-0 font-weight-bold" id="net_amount">{roundOffValue(totalAmount)}</h4>
                                             <span style={{ fontSize: "15px", fontWeight: 700, color: "#00a4e5" }}>Amount</span>
                                         </div>
                                     </div>
