@@ -44,28 +44,25 @@ const NewPosOrder = () => {
     const [discountType, setDiscountType] = useState("amount");
     const [searchHoldBill, setSearchHoldBill] = useState("");
     const [flatDiscount, setFlatDiscount] = useState(0);
+    const [showMultiplePay, setShowMultiplePay] = useState(false);
 
-    const handleDiscountChange = (index: any, value: any) => {
-
-        setDiscounts((prevDiscounts = []) => {
-            if (!selectedProducts[index]) return prevDiscounts;
-
-            let updatedDiscounts = [...prevDiscounts];
-
+    const handleDiscountChange = (productId: number, value: any) => {
+        setDiscounts((prevDiscounts) => {
+            const updatedDiscounts = { ...prevDiscounts };
             let discountValue = parseFloat(value) || 0;
 
             if (discountType === "percentage") {
                 discountValue = Math.min(100, Math.max(0, discountValue)); // Ensure valid %
-                updatedDiscounts[index] = discountValue; // Store percentage, not amount
-            } else {
-                updatedDiscounts[index] = discountValue; // Store amount directly
             }
+
+            updatedDiscounts[productId] = discountValue; // Store by product ID
 
             return updatedDiscounts;
         });
 
         calculateTotals();
     };
+
 
     /**
      * Handles button click event for the calculator.
@@ -243,14 +240,14 @@ const NewPosOrder = () => {
         let totalAmount = 0;
         let totalDiscount = 0;
 
-        selectedProducts.forEach((product, index) => {
+        selectedProducts.forEach((product) => {
             let qty = product.qty ? product.qty : 1;
-            if (product.hold_qty != undefined && product.hold_qty > 0) {
+            if (product.hold_qty !== undefined && product.hold_qty > 0) {
                 qty = product.hold_qty;
             }
-            let discount = parseFloat(discounts[index] || 0);
 
-            // Correctly apply the discount
+            let discount = parseFloat(discounts[product.id] || 0); // Use product.id instead of index
+
             if (discountType === "percentage") {
                 discount = (product.price * discount) / 100; // Convert % to ₹
             }
@@ -261,20 +258,21 @@ const NewPosOrder = () => {
             totalQuantity += qty;
             totalMRP += product.price * qty;
             totalAmount += netAmount;
-            totalDiscount += discount * qty; // Ensure discount is correctly summed
+            totalDiscount += discount * qty;
         });
+
         totalDiscount = parseFloat(totalDiscount.toFixed(2));
         totalMRP = parseFloat(totalMRP.toFixed(2));
 
-        // calculate flatdiscount if any applied and deduct it from total amount
-        // and add it to totaldiscount
         let discountedTotal = totalAmount - flatDiscount;
-        totalDiscount = totalDiscount + flatDiscount;
+        totalDiscount += flatDiscount;
+
         setTotalQuantity(totalQuantity);
         setTotalMRP(totalMRP);
         setTotalAmount(discountedTotal);
-        setTotalDiscount(totalDiscount); // Update the total discount amount
+        setTotalDiscount(totalDiscount);
     };
+
 
     /* This function is used to add hold bill to cart by id*/
     const shiftHoldBillToCart = async (CustomerId: any) => {
@@ -322,12 +320,22 @@ const NewPosOrder = () => {
  * Removes a product from the selected products list.
  * @param {string} id - The id of the product to be removed.
  */
-    const removeProduct = (id: any) => {
-        setSelectedProducts(selectedProducts.filter((product) => product.id !== id));
-        if (selectedCustomer != undefined && selectedCustomer > 0) {
+    const removeProduct = (id: number) => {
+        setSelectedProducts((prevProducts) => prevProducts.filter((product) => product.id !== id));
+
+        setDiscounts((prevDiscounts) => {
+            const updatedDiscounts = { ...prevDiscounts };
+            delete updatedDiscounts[id]; // Remove discount entry
+            return updatedDiscounts;
+        });
+
+        if (selectedCustomer !== undefined && selectedCustomer > 0) {
             deleteHoldBillByCustomerIdByProductId(selectedCustomer, id);
         }
+
+        calculateTotals(); // Ensure totals are recalculated
     };
+
 
 
 
@@ -638,302 +646,323 @@ const NewPosOrder = () => {
 
     return (
         <PosLayout>
-            <div className="flex flex-col pos-left">
-                <div className="row">
-                    <div className="col-md-4">
-                        <POSProductSearchBox selectedProducts={selectedProducts} setSelectedProducts={setSelectedProducts} />
+            {showMultiplePay ? (
+                // Multiple Pay Screen
+                <div className="flex h-screen">
+                    {/* Left Menu */}
+                    <div className="w-1/4 bg-gray-200 p-4">
+
                     </div>
-                    <div className="col-md-4">
-                        <POSCustomerSearchBox setSelectedCustomer={setSelectedCustomer}
-                            selectedCustomer={selectedCustomer}
-                            selectedProducts={selectedProducts}
-                            setSearchCustomerTerm={setSearchCustomerTerm}
-                            searchCustomerTerm={searchCustomerTerm}
-                            setCustomers={setCustomers}
-                            customers={customers}
-                            setCustomerLastOrder={setCustomerLastOrder} />
+
+                    {/* Right Payment Screen */}
+                    <div className="w-3/4 p-4">
+                        <button
+                            className="bg-red-500 text-white px-4 py-2 rounded mb-4"
+                            onClick={() => setShowMultiplePay(false)}
+                        >
+                            Back to Sales
+                        </button>
+                        <h3 className="text-lg font-bold">Payment Options</h3>
+                        <div className="mt-4">
+                            {/* Payment form goes here */}
+                            <input type="text" className="border p-2 w-full" placeholder="Enter amount" />
+                            <button className="bg-blue-500 text-white px-4 py-2 mt-2">Proceed to Pay</button>
+                        </div>
                     </div>
                 </div>
-                {/* Second Row: Product Grid */}
-                <div className="row pos-left-middle">
-                    <div className="col-12">
-                        <div className="border rounded bg-white">
-                            <table className="w-full border-collapse border carttable">
-                                <thead>
-                                    <tr className="bg-black text-center text-white">
-                                        <th className="border px-2 py-2 ">#</th>
-                                        <th className="border px-2 py-2 ">Itemcode</th>
-                                        <th className="border px-2 py-2 w-45">Product</th>
-                                        <th className="border px-2 py-2 w-20">Qty</th>
-                                        <th className="border px-2 py-2">MRP</th>
-                                        <th className="border px-2 py-2">Discount</th>
-                                        <th className="border px-2 py-2">Add. Discount</th>
-                                        <th className="border px-2 py-2">Unit Cost</th>
-                                        <th className="border px-2 py-2">Net Amount</th>
-                                        <th className="border px-2 py-2">Action</th>
-                                    </tr>
-                                </thead>
-                                {selectedProducts.length > 0 ? (
+            ) : (
+                // Default Sales Screen
+                <div>
+                    <div className="flex flex-col pos-left">
+                        <div className="row">
+                            <div className="col-md-4">
+                                <POSProductSearchBox selectedProducts={selectedProducts} setSelectedProducts={setSelectedProducts} />
+                            </div>
+                            <div className="col-md-4">
+                                <POSCustomerSearchBox setSelectedCustomer={setSelectedCustomer}
+                                    selectedCustomer={selectedCustomer}
+                                    selectedProducts={selectedProducts}
+                                    setSearchCustomerTerm={setSearchCustomerTerm}
+                                    searchCustomerTerm={searchCustomerTerm}
+                                    setCustomers={setCustomers}
+                                    customers={customers}
+                                    setCustomerLastOrder={setCustomerLastOrder} />
+                            </div>
+                        </div>
+                        {/* Second Row: Product Grid */}
+                        <div className="row pos-left-middle">
+                            <div className="col-12">
+                                <div className="border rounded bg-white">
+                                    <table className="w-full border-collapse border carttable">
+                                        <thead>
+                                            <tr className="bg-black text-center text-white">
+                                                <th className="border px-2 py-2 ">#</th>
+                                                <th className="border px-2 py-2 ">Itemcode</th>
+                                                <th className="border px-2 py-2 w-45">Product</th>
+                                                <th className="border px-2 py-2 w-20">Qty</th>
+                                                <th className="border px-2 py-2">MRP</th>
+                                                <th className="border px-2 py-2">Discount</th>
+                                                <th className="border px-2 py-2">Add. Discount</th>
+                                                <th className="border px-2 py-2">Unit Cost</th>
+                                                <th className="border px-2 py-2">Net Amount</th>
+                                                <th className="border px-2 py-2">Action</th>
+                                            </tr>
+                                        </thead>
+                                        {selectedProducts.length > 0 ? (
 
-                                    <tbody>
-                                        {selectedProducts.map((product, index) => {
-                                            let qty = product.qty ?? 1;
-                                            if (product.hold_qty != undefined && product.hold_qty > 0) {
-                                                qty = product.hold_qty;
-                                            }
-                                            if (product.order_minimum_quantity > 0 && qty < product.order_minimum_quantity) {
-                                                qty = product.order_minimum_quantity;
-                                            }
-                                            let discount = parseFloat(discounts[index] || 0);
-                                            //alert(discount);
-                                            // Apply discount correctly based on discount type
-                                            if (discountType === "percentage") {
-                                                discount = (product.price * discount) / 100; // Convert percentage to amount
-                                            }
-                                            //alert(discount);
-                                            const unitCost = product.price - discount;
-                                            const netAmount = unitCost * qty; return (
-                                                <tr key={product.id}>
-                                                    <td className="border px-2 py-2">{index + 1}</td>
-                                                    <td className="border px-2 py-2">{product.sku}</td>
-                                                    <td className="border px-2 py-2 w-45">{product.name}</td>
-                                                    <td className="border px-2 py-2 w-20"> <input type="number"
-                                                        readOnly={true}
-                                                        id={`qty${index}`}
-                                                        name={`qty${index}`}
-                                                        value={qty}
-                                                        onClick={() => { setQtyupdateIndex(index), setIsOpen(true), setResult(qty.toString()) }} ></input></td>
-                                                    <td className="border px-2 py-2">{product.price}</td>
-                                                    <td className="border px-2 py-2">
-                                                        {/* <input
-                                                        type="number"
-                                                        value={parseFloat(discounts[index] || 0)}
-                                                        onChange={(e) => handleDiscountChange(index, e.target.value)}
-                                                        className="w-16 text-center border rounded"
-                                                    /> */}
-                                                        <div className="input-group">
-                                                            <button
-                                                                type="button"
-                                                                onClick={toggleDiscountType}
-                                                                className={`btn btn-dark ${discountType === "percentage" ? "btn-percent" : "btn-rupee"}`}
-                                                            >
-                                                                {discountType === "percentage" ? (
-                                                                    <i className="fa fa-percent" aria-hidden="true"></i>
-                                                                ) : (
-                                                                    <i className="fa fa-inr currency_style" aria-hidden="true"></i>
-                                                                )}
-                                                            </button>
-                                                            {/* <input
+                                            <tbody>
+                                                {selectedProducts.map((product, index) => {
+                                                    let qty = product.qty ?? 1;
+                                                    if (product.hold_qty != undefined && product.hold_qty > 0) {
+                                                        qty = product.hold_qty;
+                                                    }
+                                                    if (product.order_minimum_quantity > 0 && qty < product.order_minimum_quantity) {
+                                                        qty = product.order_minimum_quantity;
+                                                    }
+                                                    let discount = parseFloat(discounts[product.id] || 0);
+                                                    //alert(discount);
+                                                    // Apply discount correctly based on discount type
+                                                    if (discountType === "percentage") {
+                                                        discount = (product.price * discount) / 100; // Convert percentage to amount
+                                                    }
+                                                    //alert(discount);
+                                                    const unitCost = product.price - discount;
+                                                    const netAmount = unitCost * qty; return (
+                                                        <tr key={product.id}>
+                                                            <td className="border px-2 py-2">{index + 1}</td>
+                                                            <td className="border px-2 py-2">{product.sku}</td>
+                                                            <td className="border px-2 py-2 w-45">{product.name}</td>
+                                                            <td className="border px-2 py-2 w-20"> <input type="number"
+                                                                readOnly={true}
+                                                                id={`qty${index}`}
+                                                                name={`qty${index}`}
+                                                                value={qty}
+                                                                onClick={() => { setQtyupdateIndex(index), setIsOpen(true), setResult(qty.toString()) }} ></input></td>
+                                                            <td className="border px-2 py-2">{product.price}</td>
+                                                            <td className="border px-2 py-2">
+                                                                <div className="input-group">
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={toggleDiscountType}
+                                                                        className={`btn btn-dark ${discountType === "percentage" ? "btn-percent" : "btn-rupee"}`}
+                                                                    >
+                                                                        {discountType === "percentage" ? (
+                                                                            <i className="fa fa-percent" aria-hidden="true"></i>
+                                                                        ) : (
+                                                                            <i className="fa fa-inr currency_style" aria-hidden="true"></i>
+                                                                        )}
+                                                                    </button>
+                                                                    {/* <input
                                                                 type="number"
                                                                 // value={discountType === "percentage" ? ((discounts[index] / totalAmount) * 100).toFixed(2) : discounts[index]}
                                                                 value={discount}
                                                                 onChange={(e) => handleDiscountChange(index, e.target.value)}
                                                                 className="w-16 text-center border rounded"
                                                             /> */}
-                                                            <input
-                                                                type="number"
-                                                                // Use the updated discounts array
-                                                                onChange={(e) => handleDiscountChange(index, e.target.value)}
-                                                                className="w-16 text-center border rounded"
-                                                            />
-                                                        </div>
-                                                    </td>
-                                                    <td className="border px-2 py-2">0</td>
-                                                    <td className="border px-2 py-2">{unitCost.toFixed(2)}</td>
-                                                    <td className="border px-2 py-2">{netAmount.toFixed(2)}</td>
-                                                    <td className="border px-2 py-2 text-center">
-                                                        <button
-                                                            onClick={() => removeProduct(product.id)}
-                                                            className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
-                                                        >
-                                                            Remove
-                                                        </button>
-                                                    </td>
+                                                                    <input
+                                                                        type="number"
+                                                                        value={discounts[product.id] || 0} // Use product.id instead of index
+                                                                        onChange={(e) => handleDiscountChange(product.id, e.target.value)}
+                                                                        className="w-16 text-center border rounded"
+                                                                    />
+                                                                </div>
+                                                            </td>
+                                                            <td className="border px-2 py-2">0</td>
+                                                            <td className="border px-2 py-2">{unitCost.toFixed(2)}</td>
+                                                            <td className="border px-2 py-2">{netAmount.toFixed(2)}</td>
+                                                            <td className="border px-2 py-2 text-center">
+                                                                <button
+                                                                    onClick={() => removeProduct(product.id)}
+                                                                    className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
+                                                                >
+                                                                    Remove
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    )
+                                                })}
+                                            </tbody>
+
+                                        ) : (
+                                            // <p className="text-center">No products selected.</p>
+                                            <tbody>
+                                                <tr>
+                                                    <td className="text-center" colSpan={10}>No products selected.</td>
                                                 </tr>
-                                            )
-                                        })}
-                                    </tbody>
-
-                                ) : (
-                                    // <p className="text-center">No products selected.</p>
-                                    <tbody>
-                                        <tr>
-                                            <td className="text-center" colSpan={10}>No products selected.</td>
-                                        </tr>
-                                    </tbody>
-                                )}
-                            </table>
-                        </div>
-                    </div>
-                    <div className="pos-left-bottom-fixed col-12">
-                        <div className="row">
-                            <div className="mb-0 form-group kp-remark col-12">
-                                <input
-                                    type="text"
-                                    className="form-control form-control-sm"
-                                    name="note"
-                                    id="remark"
-                                    placeholder="Remarks"
-                                    // value={remark}
-                                    // onChange={handleRemarkChange}
-                                    autoComplete="off"
-                                />
-                                <small
-                                    style={{ display: "none" }}
-                                    className="help-block"
-                                >
-                                    The Remark must be less than 200 characters long
-                                </small>
+                                            </tbody>
+                                        )}
+                                    </table>
+                                </div>
                             </div>
+                            <div className="pos-left-bottom-fixed col-12">
+                                <div className="row">
+                                    <div className="mb-0 form-group kp-remark col-12">
+                                        <input
+                                            type="text"
+                                            className="form-control form-control-sm"
+                                            name="note"
+                                            id="remark"
+                                            placeholder="Remarks"
+                                            // value={remark}
+                                            // onChange={handleRemarkChange}
+                                            autoComplete="off"
+                                        />
+                                        <small
+                                            style={{ display: "none" }}
+                                            className="help-block"
+                                        >
+                                            The Remark must be less than 200 characters long
+                                        </small>
+                                    </div>
 
-                            {/* Summary Section */}
-                            <div className="col-12 mt-1 mb-0 text-center">
-                                <div className="invoice-summary bg-white pt-1 pb-1 col-12">
-                                    <div className="row">
-                                        <div className="col border-right">
-                                            <h6 id="total_quantity">{totalQuantity}</h6>
-                                            <span style={{ fontWeight: 700 }}>Quantity</span>
-                                        </div>
-                                        <div className="col border-right">
-                                            <h6 id="total_mrp">{totalMRP.toFixed(2)}</h6>
-                                            <span style={{ fontWeight: 700 }}>MRP</span>
-                                        </div>
-                                        <div className="col border-right">
-                                            <h6 id="tax_amount">0</h6>
-                                            <span style={{ fontWeight: 700 }}>Tax Amount</span>
-                                        </div>
+                                    {/* Summary Section */}
+                                    <div className="col-12 mt-1 mb-0 text-center">
+                                        <div className="invoice-summary bg-white pt-1 pb-1 col-12">
+                                            <div className="row">
+                                                <div className="col border-right">
+                                                    <h6 id="total_quantity">{totalQuantity}</h6>
+                                                    <span style={{ fontWeight: 700 }}>Quantity</span>
+                                                </div>
+                                                <div className="col border-right">
+                                                    <h6 id="total_mrp">{totalMRP.toFixed(2)}</h6>
+                                                    <span style={{ fontWeight: 700 }}>MRP</span>
+                                                </div>
+                                                <div className="col border-right">
+                                                    <h6 id="tax_amount">0</h6>
+                                                    <span style={{ fontWeight: 700 }}>Tax Amount</span>
+                                                </div>
 
-                                        <div className="col border-right">
-                                            <h6 id="total_discount_amount">{totaldiscount}</h6>
-                                            <span style={{ fontWeight: 700 }}>Discount</span>
+                                                <div className="col border-right">
+                                                    <h6 id="total_discount_amount">{totaldiscount}</h6>
+                                                    <span style={{ fontWeight: 700 }}>Discount</span>
+                                                </div>
+                                                <div className="col border-right">
+                                                    <input
+                                                        type="text"
+                                                        id="flat_discount"
+                                                        name="flatDiscount"
+                                                        value={flatDiscount}
+                                                        onChange={(e) => setFlatDiscount(parseFloat(e.target.value) || 0)}
+                                                        style={{ maxWidth: "70px" }}
+                                                        className="form-control form-control-sm"
+                                                        placeholder="Percentage"
+                                                    />
+                                                    <span style={{ fontWeight: 700, marginTop: "6px", display: "block" }}>Flat Discount</span>
+                                                </div>
+                                                <div className="col border-right">
+                                                    <input
+                                                        type="text"
+                                                        className="form-control form-control-sm text-right"
+                                                        name="round_off"
+                                                        id="round_off"
+                                                        placeholder="Roundoff"
+                                                        value={(roundOffValue(totalAmount) - totalAmount).toFixed(2)}
+                                                        // onChange={handleRoundOffChange}
+                                                        style={{ marginBottom: ".5rem" }}
+                                                    />
+                                                    <span style={{ fontWeight: 700 }}>Round OFF</span>
+                                                </div>
+                                                <div className="col total">
+                                                    <h4 style={{ color: "#00a4e5" }} className="mb-0 font-weight-bold" id="net_amount">{roundOffValue(totalAmount)}</h4>
+                                                    <span style={{ fontSize: "15px", fontWeight: 700, color: "#00a4e5" }}>Amount</span>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div className="col border-right">
-                                            <input
-                                                type="text"
-                                                id="flat_discount"
-                                                name="flatDiscount"
-                                                value={flatDiscount}
-                                                onChange={(e) => setFlatDiscount(parseFloat(e.target.value) || 0)}
-                                                style={{ maxWidth: "70px" }}
-                                                className="form-control form-control-sm"
-                                                placeholder="Percentage"
-                                            />
-                                            <span style={{ fontWeight: 700, marginTop: "6px", display: "block" }}>Flat Discount</span>
-                                        </div>
-                                        <div className="col border-right">
-                                            <input
-                                                type="text"
-                                                className="form-control form-control-sm text-right"
-                                                name="round_off"
-                                                id="round_off"
-                                                placeholder="Roundoff"
-                                                value={(roundOffValue(totalAmount) - totalAmount).toFixed(2)}
-                                                // onChange={handleRoundOffChange}
-                                                style={{ marginBottom: ".5rem" }}
-                                            />
-                                            <span style={{ fontWeight: 700 }}>Round OFF</span>
-                                        </div>
-                                        <div className="col total">
-                                            <h4 style={{ color: "#00a4e5" }} className="mb-0 font-weight-bold" id="net_amount">{roundOffValue(totalAmount)}</h4>
-                                            <span style={{ fontSize: "15px", fontWeight: 700, color: "#00a4e5" }}>Amount</span>
+                                    </div>
+
+                                    {/* Payment Buttons */}
+                                    <div className="col-md-12">
+                                        <div className="footer-button">
+                                            <div id="salesbtndiv" className="row">
+                                                <button type="button" className="col btn btn-dark" onClick={() => setShowMultiplePay(true)}><i className="fa fa-columns" /> Multiple Pay (F12)</button>
+                                                <button type="button" className="col btn btn-dark" onClick={handleHoldClick}><i className="fa fa-pause" /> Hold (F6)</button>
+                                                <button type="button" className="col btn btn-dark" onClick={createCashOrder}><i className="fa fa-inr" /> Cash (F4)</button>
+                                                <button type="button" className="col btn btn-dark"><i className="fa fa-calendar" /> Pay Later (F11)</button>
+                                                <button type="button" className="col btn btn-dark" onClick={() => PrintInvoice()}><i className="fa fa-print" /> Print Invoice</button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
+                        </div>
 
-                            {/* Payment Buttons */}
-                            <div className="col-md-12">
-                                <div className="footer-button">
-                                    <div id="salesbtndiv" className="row">
-                                        <button type="button" className="col btn btn-dark"><i className="fa fa-columns" /> Multiple Pay (F12)</button>
-                                        <button type="button" className="col btn btn-dark" onClick={handleHoldClick}><i className="fa fa-pause" /> Hold (F6)</button>
-                                        <button type="button" className="col btn btn-dark" onClick={createCashOrder}><i className="fa fa-inr" /> Cash (F4)</button>
-                                        <button type="button" className="col btn btn-dark"><i className="fa fa-calendar" /> Pay Later (F11)</button>
-                                        <button type="button" className="col btn btn-dark" onClick={() => PrintInvoice()}><i className="fa fa-print" /> Print Invoice</button>
-                                    </div>
+
+                    </div>
+                    <div className="pos-right">
+                        <div className="right-sidebar mt-2 mb-2">
+                            <div className="right-top">
+                                <div className="sidebar-widget text-center">
+                                    <ul className="mb-0">
+                                        <li>
+                                            <button
+                                                title="Hold Bill"
+                                                className=" items-center space-x-2" onClick={getholdbillsresponse}
+                                            >
+                                                <i className="fa fa-pause" aria-hidden="true"></i><br />
+                                                <span>Hold Bill</span>
+                                            </button>
+                                        </li>
+                                        <li>
+                                            <button
+                                                title="Payments"
+                                                className="flex-col items-center"
+                                            >
+                                                <img
+                                                    src="https://cdn.vasyerp.com/assets/images/receipt-icon.svg?v=0.0.1"
+                                                    style={{ height: "19px", width: "73px", display: "block", marginBottom: "5px" }}
+                                                    alt="Payments"
+                                                />
+                                                <span>Payments</span>
+                                            </button>
+                                        </li>
+                                        <li>
+                                            <a href="#" title="Redeem Loyalty" id="redeemLoyalty">
+                                                <i className="fa fa-gift" aria-hidden="true"></i> Redeem Loyalty
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <button id="expense_modal" title="Add Payment" onClick={() => setIsPaymentRegisterModel(true)}>
+                                                <i className="fa fa-money" aria-hidden="true"></i> Add Payment
+                                            </button>
+                                        </li>
+                                        <li>
+                                            <a href="#" title="Credit Notes" id="creditnote_view">
+                                                <i className="fa fa-sticky-note" aria-hidden="true"></i> Credit Notes
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a href="#" title="Orders" id="pos-list" onClick={getAllOrders}>
+                                                <i className="fa fa-list" aria-hidden="true"></i> Orders
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a href="#" id="cashcontrol_modal" title="Cash Control" className="flex items-center space-x-2" onClick={() => setIsCashRegisterModel(true)}>
+                                                <img
+                                                    src="https://cdn.vasyerp.com/assets/image/Cash-Control.svg"
+                                                    id="cashControlImage"
+                                                    alt="Cash Control"
+                                                    style={{ height: "40px", width: "40px" }}
+                                                />
+                                                <span>Cash Control</span>
+                                            </a>
+                                        </li>
+                                    </ul>
+                                    <div className="clearfix"></div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                </div>
-
-
-            </div>
-            <div className="pos-right">
-                <div className="right-sidebar mt-2 mb-2">
-                    <div className="right-top">
-                        <div className="sidebar-widget text-center">
-                            <ul className="mb-0">
-                                <li>
-                                    <button
-                                        title="Hold Bill"
-                                        className=" items-center space-x-2" onClick={getholdbillsresponse}
-                                    >
-                                        <i className="fa fa-pause" aria-hidden="true"></i><br />
-                                        <span>Hold Bill</span>
-                                    </button>
-                                </li>
-                                <li>
-                                    <button
-                                        title="Payments"
-                                        className="flex-col items-center"
-                                    >
-                                        <img
-                                            src="https://cdn.vasyerp.com/assets/images/receipt-icon.svg?v=0.0.1"
-                                            style={{ height: "19px", width: "73px", display: "block", marginBottom: "5px" }}
-                                            alt="Payments"
-                                        />
-                                        <span>Payments</span>
-                                    </button>
-                                </li>
-                                <li>
-                                    <a href="#" title="Redeem Loyalty" id="redeemLoyalty">
-                                        <i className="fa fa-gift" aria-hidden="true"></i> Redeem Loyalty
-                                    </a>
-                                </li>
-                                <li>
-                                    <button id="expense_modal" title="Add Payment" onClick={() => setIsPaymentRegisterModel(true)}>
-                                        <i className="fa fa-money" aria-hidden="true"></i> Add Payment
-                                    </button>
-                                </li>
-                                <li>
-                                    <a href="#" title="Credit Notes" id="creditnote_view">
-                                        <i className="fa fa-sticky-note" aria-hidden="true"></i> Credit Notes
-                                    </a>
-                                </li>
-                                <li>
-                                    <a href="#" title="Orders" id="pos-list" onClick={getAllOrders}>
-                                        <i className="fa fa-list" aria-hidden="true"></i> Orders
-                                    </a>
-                                </li>
-                                <li>
-                                    <a href="#" id="cashcontrol_modal" title="Cash Control" className="flex items-center space-x-2" onClick={() => setIsCashRegisterModel(true)}>
-                                        <img
-                                            src="https://cdn.vasyerp.com/assets/image/Cash-Control.svg"
-                                            id="cashControlImage"
-                                            alt="Cash Control"
-                                            style={{ height: "40px", width: "40px" }}
-                                        />
-                                        <span>Cash Control</span>
-                                    </a>
-                                </li>
-                            </ul>
-                            <div className="clearfix"></div>
-                        </div>
-                    </div>
-                    <div className="right-bottom text-left">
-                        <div className="customer-highlights">
-                            <h6>Customer Details</h6>
-                            {/* <p>
+                            <div className="right-bottom text-left">
+                                <div className="customer-highlights">
+                                    <h6>Customer Details</h6>
+                                    {/* <p>
                                 <span className="font-weight-bold">Last Visited:</span> <span id="customer_last_transaction_date">-</span>
                             </p> */}
-                            {/* <p>
+                                    {/* <p>
                                 <span className="font-weight-bold">Last Bill Amount:</span>
                                 <span id="customer_last_transaction_amount">
                                     <i className="fa fa-inr currency_style" aria-hidden="true"></i>0
                                 </span>
                             </p> */}
-                            {/* <p>
+                                    {/* <p>
                                 <span className="font-weight-bold">Most Purchased Item:</span>{" "}
                                 <span id="customer_last_transaction_prdouct">0</span>
                             </p>
@@ -941,10 +970,10 @@ const NewPosOrder = () => {
                                 <span className="font-weight-bold" id="closing_value">Due Payment:</span>{" "}
                                 <span id="customer_closing">0</span>
                             </p> */}
-                            {/* <p>
+                                    {/* <p>
                                 <span className="font-weight-bold">Total Purchase:</span> <span id="customer_total_purchase">0</span>
                             </p> */}
-                            {/* <p id="loyaltyPointsdiv">
+                                    {/* <p id="loyaltyPointsdiv">
                                 <span className="font-weight-bold">Loyalty Points:</span> <span id="customer_loyalty">0</span>
                             </p>
                             <p id="coupon_div" className="m--hide">
@@ -953,169 +982,174 @@ const NewPosOrder = () => {
                                     <i className="fa fa-plus" aria-hidden="true"></i>
                                 </button>
                             </p> */}
-                        </div>
-                        <div className="customer-highlights">
-                            <p>
-                                <span className="font-weight-bold">Last Bill No.:</span>
-                                <span id="bill_last_no">{customerLastOrder != undefined
-                                    && customerLastOrder != null
-                                    && customerLastOrder.LatestOrder != null ? "ORD" + customerLastOrder.LatestOrder.CustomOrderNumber : 0}
-                                </span>
-                            </p>
-                            <p>
-                                <span className="font-weight-bold">Last Bill Amount:</span>{" "}
-                                <span id="billlast_amount">
-                                    <i className="fa fa-inr currency_style" aria-hidden="true"></i> {customerLastOrder != undefined && customerLastOrder != null && customerLastOrder.LatestOrder != null ? customerLastOrder.LatestOrder.OrderTotal : 0}
-                                </span>
-                            </p>
-                            <p>
-                                <button type="button" className="col btn btn-sm btn-dark" >
-                                    <i className="fa fa-print" aria-hidden="true"></i> Last Bill Print
-                                </button>
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <Modal show={isOpen}>
-                <Modal.Body>
-                    <div className="calculator">
-
-                        <input type="text" placeholder="Enter Quantity Here..!" className="form-control mb-3"
-                            value={result} readOnly />
-                        <div className="buttons">
-                            <button onClick={() =>
-                                calculator_handleClick('1')}>1</button>
-                            <button onClick={() =>
-                                calculator_handleClick('2')}>2</button>
-                            <button onClick={() =>
-                                calculator_handleClick('3')}>3</button>
-                            <button onClick={() =>
-                                calculator_handleClick('+10')}>+10</button>
-
-                            <button onClick={() =>
-                                calculator_handleClick('4')}>4</button>
-                            <button onClick={() =>
-                                calculator_handleClick('5')}>5</button>
-                            <button onClick={() =>
-                                calculator_handleClick('6')}>6</button>
-                            <button onClick={() =>
-                                calculator_handleClick('+20')}>+20</button>
-
-
-                            <button onClick={() =>
-                                calculator_handleClick('7')}>7</button>
-                            <button onClick={() =>
-                                calculator_handleClick('8')}>8</button>
-                            <button onClick={() =>
-                                calculator_handleClick('9')}>9</button>
-                            <button onClick={() =>
-                                calculator_handleClick('+50')}>+50</button>
-
-
-                            <button className="operator" id='clear' onClick={() =>
-                                calculator_handleClick('C')}>C</button>
-                            <button onClick={() =>
-                                calculator_handleClick('0')}>0</button>
-                            <button onClick={() =>
-                                calculator_handleClick('.')}>.</button>
-                            <button onClick={() =>
-                                calculator_handleClick('')}><i className='fa fa-close'></i></button>
-
-
-
+                                </div>
+                                <div className="customer-highlights">
+                                    <p>
+                                        <span className="font-weight-bold">Last Bill No.:</span>
+                                        <span id="bill_last_no">{customerLastOrder != undefined
+                                            && customerLastOrder != null
+                                            && customerLastOrder.LatestOrder != null ? "ORD" + customerLastOrder.LatestOrder.CustomOrderNumber : 0}
+                                        </span>
+                                    </p>
+                                    <p>
+                                        <span className="font-weight-bold">Last Bill Amount:</span>{" "}
+                                        <span id="billlast_amount">
+                                            <i className="fa fa-inr currency_style" aria-hidden="true"></i> {customerLastOrder != undefined && customerLastOrder != null && customerLastOrder.LatestOrder != null ? customerLastOrder.LatestOrder.OrderTotal : 0}
+                                        </span>
+                                    </p>
+                                    <p>
+                                        <button type="button" className="col btn btn-sm btn-dark" >
+                                            <i className="fa fa-print" aria-hidden="true"></i> Last Bill Print
+                                        </button>
+                                    </p>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </Modal.Body>
-                <Modal.Footer>
-                    <Button variant="primary" onClick={() => popupModel_UpdateQty()}>
-                        Submit
-                    </Button>
-                    <Button variant="secondary" onClick={() => setIsOpen(false)}>
-                        Close
-                    </Button>
-                </Modal.Footer>
+                    <Modal show={isOpen}>
+                        <Modal.Body>
+                            <div className="calculator">
 
-            </Modal>
-            <Modal className="modal-xl" show={isOrderPopupOpen}>
-                <Modal.Header>
-                    <div className="col-12">
-                        <h4 className="text-xl font-semibold text-black dark:text-white float-left">
-                            POS Orders
-                        </h4>
-                        <div className="text-xl font-semibold text-black float-right">
-                            <a onClick={() => setIsOrderPopupOpen(false)}><i className="fa fa-close"></i></a>
-                        </div>
-                    </div>
+                                <input type="text" placeholder="Enter Quantity Here..!" className="form-control mb-3"
+                                    value={result} readOnly />
+                                <div className="buttons">
+                                    <button onClick={() =>
+                                        calculator_handleClick('1')}>1</button>
+                                    <button onClick={() =>
+                                        calculator_handleClick('2')}>2</button>
+                                    <button onClick={() =>
+                                        calculator_handleClick('3')}>3</button>
+                                    <button onClick={() =>
+                                        calculator_handleClick('+10')}>+10</button>
 
-                </Modal.Header>
-                <Modal.Body className="p-1">
-                    <OrdersComponent handle_ReOrder={handle_ReOrder}></OrdersComponent>
-                </Modal.Body>
-            </Modal>
-            <div id="holdbilldiv" className={`holdbilldiv right-sidebarpopup mb-2 ${isSidebarOpen ? 'open' : 'closed'}`}>
-                <div className="right-top hold-bill-list p-2">
-                    <div className="bg-dark p-2 text-white">
-                        <button className="close-btn" onClick={() => setIsSidebarOpen(false)}>X</button>
-                        <h6>On Hold</h6>
-                    </div>
-                    <div className="relative py-1 w-full max-w-sm">
-                        <input type="text" placeholder="Search "
-                            value={searchHoldBill}
-                            onChange={(e) => setSearchHoldBill(e.target.value)}
-                            className="w-full px-2 py-2 border rounded-md shadow-sm focus:outline-none focus:ring focus:border-blue-300"></input>
-                        {searchHoldBill && (
-                            <button
-                                onClick={() => setSearchHoldBill("")}
-                                className="absolute top-1/2 right-2 -translate-y-1/2 text-gray-500 hover:text-black focus:outline-none"
-                            >
-                                ✕
-                            </button>
-                        )}
-                    </div>
+                                    <button onClick={() =>
+                                        calculator_handleClick('4')}>4</button>
+                                    <button onClick={() =>
+                                        calculator_handleClick('5')}>5</button>
+                                    <button onClick={() =>
+                                        calculator_handleClick('6')}>6</button>
+                                    <button onClick={() =>
+                                        calculator_handleClick('+20')}>+20</button>
 
-                    <ul style={{ height: window.outerHeight - 200 + 'px', overflow: 'scroll' }} className="hold_bill_div">
-                        {holdBills.length > 0 ? (
-                            holdBills.map((bill, index) => (
-                                <li key={index} className="mb-2">
-                                    <div>
-                                        <a href="#" onClick={() => shiftHoldBillToCart(bill.CustomerId)}>
-                                            <div className="d-flex align-items-center">
-                                                <p>Order ID : <span>HOLD{bill.Id}</span></p>
-                                                {/* <p className="mt-1 print-btn pb-0"  >
+
+                                    <button onClick={() =>
+                                        calculator_handleClick('7')}>7</button>
+                                    <button onClick={() =>
+                                        calculator_handleClick('8')}>8</button>
+                                    <button onClick={() =>
+                                        calculator_handleClick('9')}>9</button>
+                                    <button onClick={() =>
+                                        calculator_handleClick('+50')}>+50</button>
+
+
+                                    <button className="operator" id='clear' onClick={() =>
+                                        calculator_handleClick('C')}>C</button>
+                                    <button onClick={() =>
+                                        calculator_handleClick('0')}>0</button>
+                                    <button onClick={() =>
+                                        calculator_handleClick('.')}>.</button>
+                                    <button onClick={() =>
+                                        calculator_handleClick('')}><i className='fa fa-close'></i></button>
+
+
+
+                                </div>
+                            </div>
+                        </Modal.Body>
+                        <Modal.Footer>
+                            <Button variant="primary" onClick={() => popupModel_UpdateQty()}>
+                                Submit
+                            </Button>
+                            <Button variant="secondary" onClick={() => setIsOpen(false)}>
+                                Close
+                            </Button>
+                        </Modal.Footer>
+
+                    </Modal>
+                    <Modal className="modal-xl" show={isOrderPopupOpen}>
+                        <Modal.Header>
+                            <div className="col-12">
+                                <h4 className="text-xl font-semibold text-black dark:text-white float-left">
+                                    POS Orders
+                                </h4>
+                                <div className="text-xl font-semibold text-black float-right">
+                                    <a onClick={() => setIsOrderPopupOpen(false)}><i className="fa fa-close"></i></a>
+                                </div>
+                            </div>
+
+                        </Modal.Header>
+                        <Modal.Body className="p-1">
+                            <OrdersComponent handle_ReOrder={handle_ReOrder}></OrdersComponent>
+                        </Modal.Body>
+                    </Modal>
+                    <div id="holdbilldiv" className={`holdbilldiv right-sidebarpopup mb-2 ${isSidebarOpen ? 'open' : 'closed'}`}>
+                        <div className="right-top hold-bill-list p-2">
+                            <div className="bg-dark p-2 text-white">
+                                <button className="close-btn" onClick={() => setIsSidebarOpen(false)}>X</button>
+                                <h6>On Hold</h6>
+                            </div>
+                            <div className="relative py-1 w-full max-w-sm">
+                                <input type="text" placeholder="Search "
+                                    value={searchHoldBill}
+                                    onChange={(e) => setSearchHoldBill(e.target.value)}
+                                    className="w-full px-2 py-2 border rounded-md shadow-sm focus:outline-none focus:ring focus:border-blue-300"></input>
+                                {searchHoldBill && (
+                                    <button
+                                        onClick={() => setSearchHoldBill("")}
+                                        className="absolute top-1/2 right-2 -translate-y-1/2 text-gray-500 hover:text-black focus:outline-none"
+                                    >
+                                        ✕
+                                    </button>
+                                )}
+                            </div>
+
+                            <ul style={{ height: window.outerHeight - 200 + 'px', overflow: 'scroll' }} className="hold_bill_div">
+                                {holdBills.length > 0 ? (
+                                    holdBills.map((bill, index) => (
+                                        <li key={index} className="mb-2">
+                                            <div>
+                                                <a href="#" onClick={() => shiftHoldBillToCart(bill.CustomerId)}>
+                                                    <div className="d-flex align-items-center">
+                                                        <p>Order ID : <span>HOLD{bill.Id}</span></p>
+                                                        {/* <p className="mt-1 print-btn pb-0"  >
                                                 <span><button>
                                                     <i className="fa fa-print" aria-hidden="true"></i></button></span></p> */}
-                                                {/* <p className="mt-1 print-btn pb-0"  >
+                                                        {/* <p className="mt-1 print-btn pb-0"  >
                                                 <span><button><i className="fa fa-trash" aria-hidden="true"></i>
                                                 </button></span></p> */}
+                                                    </div>
+                                                    <p className="mt-1"  ><span>{bill.CreatedOnUtc}</span></p>
+                                                    <p>
+                                                        Contact Name :{bill.CustomerName && bill.CustomerName !== null ? bill.CustomerName : 'Walk In Customer'}</p>
+                                                    <p>Contact No : {bill.Phone}</p><p>Amount  <b><i className="fa fa-inr currency_style" aria-hidden="true">
+                                                    </i>{bill.Netamount}</b>
+                                                    </p>
+                                                </a>
                                             </div>
-                                            <p className="mt-1"  ><span>{bill.CreatedOnUtc}</span></p>
-                                            <p>
-                                                Contact Name :{bill.CustomerName && bill.CustomerName !== null ? bill.CustomerName : 'Walk In Customer'}</p>
-                                            <p>Contact No : {bill.Phone}</p><p>Amount  <b><i className="fa fa-inr currency_style" aria-hidden="true">
-                                            </i>{bill.Netamount}</b>
-                                            </p>
-                                        </a>
-                                    </div>
-                                </li>
-                            ))
-                        ) : (
-                            <p>No hold bills available.</p>
-                        )}
-                    </ul>
+                                        </li>
+                                    ))
+                                ) : (
+                                    <p>No hold bills available.</p>
+                                )}
+                            </ul>
+                        </div>
+                    </div>
+
+
+                    {/* Start Cash Register Popup Model  */}
+                    <CashRegisterNewModal show={isCashRegisterModel} handleClose={handleCashRegisterModel}></CashRegisterNewModal>
+                    {/* End Cash Register Popup Model  */}
+
+                    {/* Start Payment Register Popup Model  */}
+                    <AddPaymentNewModal show={isPaymentRegisterModel} handleClose={handlePaymentRegisterModel}></AddPaymentNewModal>
+                    {/* End Payment Register Popup Model  */}
+                    <ToastContainer></ToastContainer>
+
                 </div>
-            </div>
-
-
-            {/* Start Cash Register Popup Model  */}
-            <CashRegisterNewModal show={isCashRegisterModel} handleClose={handleCashRegisterModel}></CashRegisterNewModal>
-            {/* End Cash Register Popup Model  */}
-
-            {/* Start Payment Register Popup Model  */}
-            <AddPaymentNewModal show={isPaymentRegisterModel} handleClose={handlePaymentRegisterModel}></AddPaymentNewModal>
-            {/* End Payment Register Popup Model  */}
-            <ToastContainer></ToastContainer>
+            )}
         </PosLayout>
+
+
 
     )
 }
