@@ -503,9 +503,9 @@ const NewPosOrder = () => {
                     ;
 
                 // Call hold API
-                const orderResponse = await createOrder(authToken, orderData);
+                const orderResponse = await createOrder(authToken, orderData, "Payments.CashOnDelivery");
                 //console.log("Order API Response:", orderResponse);
-                if (orderResponse != undefined && orderResponse.shopping_cart_items != undefined && orderResponse.shopping_cart_items.length > 0) {
+                if (orderResponse != undefined && orderResponse.id > 0) {
                     /*Here we first delete old hold bill from index db by customer id*/
                     deleteHoldBillByCustomerId(customerid);
 
@@ -513,6 +513,12 @@ const NewPosOrder = () => {
                     setSelectedCustomer(0);
                     setSelectedProducts([]);
                     toast.success("Order created successfully.", {
+                        position: "top-right",
+                        autoClose: 5000
+                    });
+                }
+                else {
+                    toast.success("Unable to create order.", {
                         position: "top-right",
                         autoClose: 5000
                     });
