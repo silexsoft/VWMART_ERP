@@ -3,7 +3,7 @@ export const guestLogin = async () =>
 {
     try
     {
- console.log("guestLogin");
+        console.log("guestLogin");
         let response = await fetch(`${process.env.NEXT_PUBLIC_API_HOST}/api-frontend/Authenticate/GetToken`, {
             cache: 'no-store',
             method: 'POST',
@@ -60,26 +60,26 @@ export const holdOrder = async (token, holdData) =>
 };
 
 //Create order API
-export const createOrder = async (token, orderData) =>
+export const createOrder = async (token, orderData, paymentMethod) =>
+{
+    try
     {
-        try
-        {
-            let response = await fetch(`${process.env.NEXT_PUBLIC_API_HOST}/api-frontend/Pos/ConfirmOrder`, {
-                cache: 'no-store',
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: token ? `Bearer ${token}` : ""
-                },
-                body: JSON.stringify(orderData)
-            });
-            return response.json();
-        } catch (error)
-        {
-            console.error("Hold order failed:", error);
-            throw error;
-        }
-    };
+        let response = await fetch(`${process.env.NEXT_PUBLIC_API_HOST}/api-frontend/Pos/ConfirmOrder?paymentMethod=${paymentMethod}`, {
+            cache: 'no-store',
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: token ? `Bearer ${token}` : ""
+            },
+            body: JSON.stringify(orderData)
+        });
+        return response.json();
+    } catch (error)
+    {
+        console.error("Hold order failed:", error);
+        throw error;
+    }
+};
 
 //Get Hold Bills
 export const getholdbills = async (token, warehouseId) =>
@@ -106,8 +106,9 @@ export const getholdbills = async (token, warehouseId) =>
 };
 
 //This api code used to Migrate ShoppingCart from demo user to selected user.
-export const migrateshoppingcart = async(token, fromCustomerId, toCustomerId, warehouseid) => {
-   
+export const migrateshoppingcart = async (token, fromCustomerId, toCustomerId, warehouseid) =>
+{
+
     try
     {
         let response = await fetch(`${process.env.NEXT_PUBLIC_API_HOST}/api-frontend/ShoppingCart/MigrateShoppingCart/${fromCustomerId}/${toCustomerId}?includeCouponCodes=true&warehouseid==${warehouseid}`, {
@@ -125,14 +126,15 @@ export const migrateshoppingcart = async(token, fromCustomerId, toCustomerId, wa
         console.error("Get Hold order failed:", error);
         throw error;
     }
-  }
+}
 
-  //This api code used to get product detail from api.
-export const getProductDetail = async(token, productid, warehouseid) => {
-   
+//This api code used to get product detail from api.
+export const getProductDetail = async (token, productid, warehouseid) =>
+{
+
     try
     {
-        console.log("warehouseId="+warehouseid);
+        console.log("warehouseId=" + warehouseid);
         const url = `${process.env.NEXT_PUBLIC_API_HOST}/api-backend/Product/GetByIdPOS/${productid}?warehouseId=${warehouseid}`;
         let response = await fetch(url, {
             cache: 'no-store',
@@ -149,11 +151,12 @@ export const getProductDetail = async(token, productid, warehouseid) => {
         console.error("Get Hold order failed:", error);
         throw error;
     }
-  }
+}
 
 //This api code used to get Customer last order detail by phone no.
-export const getCustomerLastOrder = async(token, phoneno) => {
-   
+export const getCustomerLastOrder = async (token, phoneno) =>
+{
+
     try
     {
         const url = `${process.env.NEXT_PUBLIC_API_HOST}/api-frontend/Pos/GetTokenByPhone?phone=${phoneno}`;
@@ -172,11 +175,12 @@ export const getCustomerLastOrder = async(token, phoneno) => {
         console.error("Get Hold order failed:", error);
         throw error;
     }
-  }
+}
 
-  //This api get orders from api
-export const getAllOrdersFromApi = async(token, pageIndex,pageSize) => {
-   console.log("token="+token);
+//This api get orders from api
+export const getAllOrdersFromApi = async (token, pageIndex, pageSize) =>
+{
+    console.log("token=" + token);
     try
     {
         const response = await fetch(
@@ -198,35 +202,37 @@ export const getAllOrdersFromApi = async(token, pageIndex,pageSize) => {
         console.error("Get Hold order failed:", error);
         throw error;
     }
-  }
+}
 
-  //This api get order all items by order id from api
-export const getOrderItemsByOrderIdFromApi = async(token, orderid) => {
-     try
-     {
+//This api get order all items by order id from api
+export const getOrderItemsByOrderIdFromApi = async (token, orderid) =>
+{
+    try
+    {
 
-         const response = await fetch(
-             `${process.env.NEXT_PUBLIC_API_HOST}/api-backend/OrderItem/GetOrderItems/${orderid}`,
-             {
-                 method: 'GET',
-                 headers: {
-                     accept: 'application/json',
-                     Authorization: token ? `Bearer ${token}` : '',
-                 },
-             }
-         );
- 
-         return response.json();
-     } catch (error)
-     {
-         console.error("Get Hold order failed:", error);
-         throw error;
-     }
-   }
+        const response = await fetch(
+            `${process.env.NEXT_PUBLIC_API_HOST}/api-backend/OrderItem/GetOrderItems/${orderid}`,
+            {
+                method: 'GET',
+                headers: {
+                    accept: 'application/json',
+                    Authorization: token ? `Bearer ${token}` : '',
+                },
+            }
+        );
+
+        return response.json();
+    } catch (error)
+    {
+        console.error("Get Hold order failed:", error);
+        throw error;
+    }
+}
 
 
-   //Create POS Customer
-export const createPosCustomer = async(token, formData,warehouseid) => {
+//Create POS Customer
+export const createPosCustomer = async (token, formData, warehouseid) =>
+{
     try
     {
         const response = await fetch(
@@ -239,17 +245,17 @@ export const createPosCustomer = async(token, formData,warehouseid) => {
                     Authorization: token ? `Bearer ${token}` : '',
                 },
                 body: JSON.stringify({
-                    "model":  {
+                    "model": {
                         "phone_enabled": true,
                         "phone_required": true,
-                        "username":`${formData.get("name")}`,
+                        "username": `${formData.get("name")}`,
                         "phone": `${formData.get("phone")}`
-                      },
-                      "form": {
+                    },
+                    "form": {
                         "additionalProp1": "string",
                         "additionalProp2": "string",
                         "additionalProp3": "string"
-                      }
+                    }
                 })
             }
         );
@@ -260,4 +266,4 @@ export const createPosCustomer = async(token, formData,warehouseid) => {
         console.error("Get Hold order failed:", error);
         throw error;
     }
-  }
+}
