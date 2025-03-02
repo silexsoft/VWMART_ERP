@@ -61,16 +61,23 @@ const POSProductSearchBox = ({ selectedProducts,setSelectedProducts }) =>
             const existingProduct = prev.find((p) => p.id === product.id);
             if (existingProduct)
             {
-              if (existingProduct.qty >= product.maxQty) {
-                // Show a toast notification for max quantity
-                toast.error(`Maximum order quantity of ${product.maxQty} reached for ${product.name}`, {
-                  position: "top-right",
-                  autoClose: 5000,
-                  toastId:`out_of_stock_${product.id}`
-                });
-                return prev; // Do not update the quantity
-              }
-              return  prev.map((p) => (p.id === product.id && product.stock_quantity > p.qty && product.order_maximum_quantity > p.qty) ? { ...p, qty: p.qty+1  } : p);
+              toast.error(`Product ${product.name} already added.`, {
+                position: "top-right",
+                autoClose: 5000,
+                toastId:`out_of_stock_${product.id}`
+              });
+
+              /* Below code used to update quantity if same product added/scanned multi times. */
+              // if (existingProduct.qty >= product.maxQty) {
+              //   // Show a toast notification for max quantity
+              //   toast.error(`Maximum order quantity of ${product.maxQty} reached for ${product.name}`, {
+              //     position: "top-right",
+              //     autoClose: 5000,
+              //     toastId:`out_of_stock_${product.id}`
+              //   });
+              //   return prev; // Do not update the quantity
+              // }
+              // return  prev.map((p) => (p.id === product.id && product.stock_quantity > p.qty && product.order_maximum_quantity > p.qty) ? { ...p, qty: p.qty+1  } : p);
             }
             return [...prev, { ...product, qty: product.qty || product.order_minimum_quantity > 0 ? product.order_minimum_quantity : 1 }];
         }

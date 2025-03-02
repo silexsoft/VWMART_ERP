@@ -15,10 +15,18 @@ import "react-toastify/dist/ReactToastify.css";
 import CashRegisterNewModal from "@/components/CashRegisterModal";
 import { AnyObject, object } from "yup";
 import AddPaymentNewModal from "@/components/AddPaymentModal";
-
+let debounceTimeout: NodeJS.Timeout;
 const NewPosOrder = () => {
     const { token, logout, warehouseId } = useAuth();
-    const [selectedProducts, setSelectedProducts] = useState<{ name: string, sku: string, order_minimum_quantity: number, id: number, qty: number; hold_qty?: number, price: number }[]>([]);
+    const [selectedProducts, setSelectedProducts] = useState<{ name: string, 
+        sku: string, 
+        order_minimum_quantity: number, 
+        id: number,
+        discount_amount:number,
+        use_percentage:boolean,
+        discount_percentage:number,
+        tax_amount:number,
+        qty: number, hold_qty?: number, price: number }[]>([]);
     const [selectedCustomer, setSelectedCustomer] = useState(0);
     const [customerLastOrder, setCustomerLastOrder] = useState<AnyObject>();
     const [customers, setCustomers] = useState([]);//used for full custoner information
@@ -33,6 +41,7 @@ const NewPosOrder = () => {
     const [remark, setRemark] = useState("");
     const [totalQuantity, setTotalQuantity] = useState(0);
     const [totalMRP, setTotalMRP] = useState(0);
+    const [totalTaxAmount, setTotalTaxAmount] = useState(0);
     const [totalAmount, setTotalAmount] = useState(0);
     // const [discounts, setDiscounts] = useState({});
     const [discounts, setDiscounts] = useState(() => new Array(selectedProducts.length).fill(0));
@@ -41,25 +50,43 @@ const NewPosOrder = () => {
     const [guesttoken, setGuestToken] = useState(null);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [holdBills, setHoldBills] = useState<any[]>([]);
-    const [discountType, setDiscountType] = useState("amount");
+    const [flatDiscountType, setFlatDiscountType] = useState("amount");
     const [searchHoldBill, setSearchHoldBill] = useState("");
     const [flatDiscount, setFlatDiscount] = useState(0);
     const [showMultiplePay, setShowMultiplePay] = useState(false);
 
-    const handleDiscountChange = (productId: number, value: any) => {
-        setDiscounts((prevDiscounts) => {
-            const updatedDiscounts = { ...prevDiscounts };
-            let discountValue = parseFloat(value) || 0;
+    // const handleDiscountChange = (productId: number, value: any) => {
+    //     setDiscounts((prevDiscounts) => {
+    //         const updatedDiscounts = { ...prevDiscounts };
+    //         let discountValue = parseFloat(value) || 0;
 
-            if (discountType === "percentage") {
-                discountValue = Math.min(100, Math.max(0, discountValue)); // Ensure valid %
-            }
+    //         if (discountType === "percentage") {
+    //             discountValue = Math.min(100, Math.max(0, discountValue)); // Ensure valid %
+    //         }
 
-            updatedDiscounts[productId] = discountValue; // Store by product ID
+    //         updatedDiscounts[productId] = discountValue; // Store by product ID
 
-            return updatedDiscounts;
-        });
+    //         return updatedDiscounts;
+    //     });
 
+    //     calculateTotals();
+    // };
+
+    const handleDiscountChange = (product: any,index:number, value: any) => {
+        let discountValue = parseFloat(value) || 0;
+        setSelectedProducts((prevItems) =>
+            prevItems.map((item) => {
+              if (item.id === product.id) {
+                return {
+                  ...item,
+                  ...(product.use_percentage
+                    ? { discount_percentage: Math.min(100, Math.max(0, discountValue)) }
+                    : { discount_amount: discountValue }),
+                };
+              }
+              return item;
+            })
+          );
         calculateTotals();
     };
 
@@ -233,23 +260,32 @@ const NewPosOrder = () => {
         }
     };
 
+    const debounce = (func: () => void, delay: number) => {
+        return () => {
+          clearTimeout(debounceTimeout);
+          debounceTimeout = setTimeout(func, delay);
+        };
+      };
+
     /*Function to calculate totals*/
-    const calculateTotals = () => {
+    const calculateTotals = debounce(() => {
         let totalQuantity = 0;
         let totalMRP = 0;
         let totalAmount = 0;
         let totalDiscount = 0;
-
+        let totalTaxAmount=0;
+        
         selectedProducts.forEach((product) => {
             let qty = product.qty ? product.qty : 1;
             if (product.hold_qty !== undefined && product.hold_qty > 0) {
                 qty = product.hold_qty;
             }
 
-            let discount = parseFloat(discounts[product.id] || 0); // Use product.id instead of index
+            //let discount = parseFloat(discounts[product.id] || 0); // Use product.id instead of index
+            let discount = product.discount_amount || 0;
 
-            if (discountType === "percentage") {
-                discount = (product.price * discount) / 100; // Convert % to ₹
+            if (product.use_percentage) {
+                discount = (product.price * product.discount_percentage) / 100; // Convert % to ₹
             }
 
             const unitCost = product.price - discount;
@@ -259,19 +295,30 @@ const NewPosOrder = () => {
             totalMRP += product.price * qty;
             totalAmount += netAmount;
             totalDiscount += discount * qty;
+            totalTaxAmount +=product.tax_amount;
         });
 
         totalDiscount = parseFloat(totalDiscount.toFixed(2));
         totalMRP = parseFloat(totalMRP.toFixed(2));
-
-        let discountedTotal = totalAmount - flatDiscount;
-        totalDiscount += flatDiscount;
-
+        console.log("totalAmount="+totalAmount);
+        if(totalAmount > 0)
+        {
+            let discountedTotal = totalAmount - flatDiscount;
+            if(flatDiscountType == "percentage")
+            {
+                discountedTotal=totalAmount - (totalAmount * flatDiscount) / 100;
+            }
+            totalDiscount += flatDiscount;
+            setTotalAmount(discountedTotal);
+        }
+        else{
+            setTotalAmount(0);
+        }
         setTotalQuantity(totalQuantity);
-        setTotalMRP(totalMRP);
-        setTotalAmount(discountedTotal);
+        setTotalMRP(totalMRP);        
         setTotalDiscount(totalDiscount);
-    };
+        setTotalTaxAmount(totalTaxAmount);
+    },300);
 
 
     /* This function is used to add hold bill to cart by id*/
@@ -314,7 +361,7 @@ const NewPosOrder = () => {
     useEffect(() => {
         calculateTotals();
 
-    }, [flatDiscount, discountType, discounts, selectedProducts]);
+    }, [flatDiscount, flatDiscountType, discounts, selectedProducts]);
 
     /**
  * Removes a product from the selected products list.
@@ -323,14 +370,14 @@ const NewPosOrder = () => {
     const removeProduct = (id: number) => {
         setSelectedProducts((prevProducts) => prevProducts.filter((product) => product.id !== id));
 
-        setDiscounts((prevDiscounts) => {
-            const updatedDiscounts = { ...prevDiscounts };
-            delete updatedDiscounts[id]; // Remove discount entry
-            return updatedDiscounts;
-        });
-
+       
         if (selectedCustomer !== undefined && selectedCustomer > 0) {
-            deleteHoldBillByCustomerIdByProductId(selectedCustomer, id);
+            try{
+                deleteHoldBillByCustomerIdByProductId(selectedCustomer, id);
+            }
+            catch (error) {
+                console.error("Failed to delete hold bill:", error);
+            }
         }
 
         calculateTotals(); // Ensure totals are recalculated
@@ -387,11 +434,13 @@ const NewPosOrder = () => {
                         Hold: true,
                         Type: "Standard", // Adjust as needed
                         SalesManId: 101, // Replace with actual SalesManId if applicable
-                        DiscountType: discountType, // Use discountType from state
-                        DiscountVal: discount,
+                        DiscountType: product.use_percentage ? "percentage" :"", // Use discountType from state
+                        DiscountVal: product.use_percentage ? product.discount_percentage :product.discount_amount,
                         AdditionalDiscountVal: 0, // Update if you have additional discounts
                         AdditionalDiscountType: "Flat", // Adjust as needed
                         NetAmount: netAmount,
+                        TotalAmount:netAmount,
+                        TotalDiscount:totaldiscount,
                         Mrp: product.price,
                         UnitCost: unitCost,
                         ShoppingCartType: "ShoppingCart",
@@ -402,12 +451,15 @@ const NewPosOrder = () => {
                 // Define the hold API payload
                 const holdData =
                 {
-                    shopping_cart_items: shoppingCartItems,
-                    dictionary: {
+                    ShoppingCartItems: shoppingCartItems,
+                    Dictionary: {
                         additionalProp1: "value1",
                         additionalProp2: "value2",
                         additionalProp3: "value3"
-                    }
+                    },
+                    FlatDiscount:flatDiscount,
+                    FlatDiscountType:flatDiscountType,
+                    Remarks:remark
                 }
                     ;
 
@@ -418,9 +470,11 @@ const NewPosOrder = () => {
                     /*Here we first delete old hold bill from index db by customer id*/
                     deleteHoldBillByCustomerId(customerid);
                     /*Here we  save hold bill into index db*/
-                    saveHoldBill(holdResponse.shopping_cart_items);
+                    saveHoldBill(holdResponse.ShoppingCartItems);
 
                     // Clear the selected products
+                    setFlatDiscount(0);
+                    setRemark("");
                     setSelectedCustomer(0);
                     setSelectedProducts([]);
                 }
@@ -478,11 +532,13 @@ const NewPosOrder = () => {
                         Hold: true,
                         Type: "Standard", // Adjust as needed
                         SalesManId: 101, // Replace with actual SalesManId if applicable
-                        DiscountType: discountType, // Use discountType from state
-                        DiscountVal: discount,
+                        DiscountType: product.use_percentage ? "percentage" :"", // Use discountType from state
+                        DiscountVal: product.use_percentage ? product.discount_percentage :product.discount_amount,
                         AdditionalDiscountVal: 0, // Update if you have additional discounts
                         AdditionalDiscountType: "Flat", // Adjust as needed
                         NetAmount: netAmount,
+                        TotalAmount:netAmount,
+                        TotalDiscount:totaldiscount,
                         Mrp: product.price,
                         UnitCost: unitCost,
                         ShoppingCartType: "ShoppingCart",
@@ -493,12 +549,15 @@ const NewPosOrder = () => {
                 // Define the hold API payload
                 const orderData =
                 {
-                    shopping_cart_items: shoppingCartItems,
-                    dictionary: {
+                    ShoppingCartItems: shoppingCartItems,
+                    Dictionary: {
                         additionalProp1: "value1",
                         additionalProp2: "value2",
                         additionalProp3: "value3"
-                    }
+                    },
+                    FlatDiscount:flatDiscount,
+                    FlatDiscountType:flatDiscountType,
+                    Remarks:remark
                 }
                     ;
 
@@ -510,6 +569,8 @@ const NewPosOrder = () => {
                     deleteHoldBillByCustomerId(customerid);
 
                     // Clear the selected products
+                    setFlatDiscount(0);
+                    setRemark("");
                     setSelectedCustomer(0);
                     setSelectedProducts([]);
                     toast.success("Order created successfully.", {
@@ -575,12 +636,29 @@ const NewPosOrder = () => {
         }
     };
 
-    const toggleDiscountType = () => {
-        console.log("toggleDiscountType");
-        setDiscountType((prevType) => {
+    const toggleFlatDiscountType = () => {
+        setFlatDiscountType((prevType) => {
             const newType = prevType === "amount" ? "percentage" : "amount";
             return newType;
         });
+
+        calculateTotals();
+    };
+
+    const toggleDiscountType = (product:any) => {
+        setSelectedProducts((prevItems) =>
+            prevItems.map((item) => {
+              if (item.id === product.id) {
+                return {
+                  ...item,
+                  ...(product.use_percentage
+                    ? { use_percentage: false }
+                    : { use_percentage: true }),
+                };
+              }
+              return item;
+            })
+          );
 
         calculateTotals();
     };
@@ -646,7 +724,7 @@ const NewPosOrder = () => {
     }
 
     // round off values
-    const roundOffValue = (value) => {
+    const roundOffValue = (value:any) => {
         return value % 1 >= 0.5 ? Math.ceil(value) : Math.floor(value);
     };
 
@@ -725,15 +803,22 @@ const NewPosOrder = () => {
                                                     if (product.order_minimum_quantity > 0 && qty < product.order_minimum_quantity) {
                                                         qty = product.order_minimum_quantity;
                                                     }
-                                                    let discount = parseFloat(discounts[product.id] || 0);
-                                                    //alert(discount);
+                                                    //let discount = parseFloat(discounts[product.id] || 0);
+                                                   
+                                                    let discount=product.discount_amount;
                                                     // Apply discount correctly based on discount type
-                                                    if (discountType === "percentage") {
-                                                        discount = (product.price * discount) / 100; // Convert percentage to amount
+                                                    if (product.use_percentage) {
+                                                        discount = (product.price * product.discount_percentage) / 100; // Convert percentage to amount
                                                     }
-                                                    //alert(discount);
+                                                    // if(product.use_percentage)
+                                                    // {
+                                                    //     discountType="percentage";
+                                                    // }
+
+                                                    
                                                     const unitCost = product.price - discount;
-                                                    const netAmount = unitCost * qty; return (
+                                                    const netAmount = unitCost * qty; 
+                                                    return (
                                                         <tr key={product.id}>
                                                             <td className="border px-2 py-2">{index + 1}</td>
                                                             <td className="border px-2 py-2">{product.sku}</td>
@@ -749,10 +834,10 @@ const NewPosOrder = () => {
                                                                 <div className="input-group">
                                                                     <button
                                                                         type="button"
-                                                                        onClick={toggleDiscountType}
-                                                                        className={`btn btn-dark ${discountType === "percentage" ? "btn-percent" : "btn-rupee"}`}
+                                                                        onClick={()=>toggleDiscountType(product)}
+                                                                        className={`btn btn-dark ${product.use_percentage ? "btn-percent" : "btn-rupee"}`}
                                                                     >
-                                                                        {discountType === "percentage" ? (
+                                                                        {product.use_percentage ? (
                                                                             <i className="fa fa-percent" aria-hidden="true"></i>
                                                                         ) : (
                                                                             <i className="fa fa-inr currency_style" aria-hidden="true"></i>
@@ -767,8 +852,9 @@ const NewPosOrder = () => {
                                                             /> */}
                                                                     <input
                                                                         type="number"
-                                                                        value={discounts[product.id] || 0} // Use product.id instead of index
-                                                                        onChange={(e) => handleDiscountChange(product.id, e.target.value)}
+                                                                        //value={discounts[product.id] || 0} // Use product.id instead of index
+                                                                        value={product.use_percentage ? product.discount_percentage : product.discount_amount}
+                                                                        onChange={(e) => handleDiscountChange(product,index, e.target.value)}
                                                                         className="w-16 text-center border rounded"
                                                                     />
                                                                 </div>
@@ -809,8 +895,8 @@ const NewPosOrder = () => {
                                             name="note"
                                             id="remark"
                                             placeholder="Remarks"
-                                            // value={remark}
-                                            // onChange={handleRemarkChange}
+                                             value={remark}
+                                             onChange={(e)=> setRemark(e.target.value)}
                                             autoComplete="off"
                                         />
                                         <small
@@ -834,7 +920,7 @@ const NewPosOrder = () => {
                                                     <span style={{ fontWeight: 700 }}>MRP</span>
                                                 </div>
                                                 <div className="col border-right">
-                                                    <h6 id="tax_amount">0</h6>
+                                                    <h6 id="tax_amount">{totalTaxAmount.toFixed(2)}</h6>
                                                     <span style={{ fontWeight: 700 }}>Tax Amount</span>
                                                 </div>
 
@@ -843,6 +929,18 @@ const NewPosOrder = () => {
                                                     <span style={{ fontWeight: 700 }}>Discount</span>
                                                 </div>
                                                 <div className="col border-right">
+                                                    <div className="input-group">
+                                                <button
+                                                                        type="button"
+                                                                        onClick={()=>toggleFlatDiscountType()}
+                                                                        className={`btn btn-dark ${flatDiscountType === "percentage" ? "btn-percent" : "btn-rupee"}`}
+                                                                    >
+                                                                        {flatDiscountType === "percentage" ? (
+                                                                            <i className="fa fa-percent" aria-hidden="true"></i>
+                                                                        ) : (
+                                                                            <i className="fa fa-inr currency_style" aria-hidden="true"></i>
+                                                                        )}
+                                                                    </button>
                                                     <input
                                                         type="text"
                                                         id="flat_discount"
@@ -852,8 +950,9 @@ const NewPosOrder = () => {
                                                         style={{ maxWidth: "70px" }}
                                                         className="form-control form-control-sm"
                                                         placeholder="Percentage"
-                                                    />
+                                                    /></div>
                                                     <span style={{ fontWeight: 700, marginTop: "6px", display: "block" }}>Flat Discount</span>
+                                                    
                                                 </div>
                                                 <div className="col border-right">
                                                     <input

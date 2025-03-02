@@ -5,6 +5,8 @@ import { useAuth } from "@/app/context/AuthContext";
 import {getStatusColor,orderStatusMap,paymentStatusMap} from "@/utils/commonConstant";
 import { useRouter } from 'next/navigation';
 import { bool } from "yup";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import OrderReceipt from "../OrderPrint/OrderReceipt";
 interface OrdersComponentProps { 
   handle_ReOrder: (order: any) => void;
@@ -19,11 +21,13 @@ const OrdersComponent: React.FC<OrdersComponentProps> = ({ handle_ReOrder }) => 
     const [totalOrder, settotalOrder] = useState(0);
     const [printOrderFor, setPrintOrderFor] = useState([]);
     const [isOrderReceiptModel, setIsOrderReceiptModel] = useState(false);
+    const [loading, setLoading] = useState(false);
     const pageSize = 25;   
      const router = useRouter();                      
 
 const getAllOrders= async (pageIndex: number)=>{
     try {
+        setLoading(true);
         setorderSeries(pageIndex);
       const data = await getAllOrdersFromApi(token,pageIndex,pageSize);  
       settotalOrder(data.total_count);              
@@ -59,7 +63,13 @@ const getAllOrders= async (pageIndex: number)=>{
                   );
       setTotalPages(Math.ceil(data.total_count / pageSize));
     } catch (error) {
-      
+      toast.error("Opps! Unable to get orders.", {
+          position: "top-right",
+          autoClose: 5000
+      });
+    }
+    finally {
+      setLoading(false); // Hide loading indicator
     }
       }
       const handlePageChange = (newPage: number) => {
@@ -116,6 +126,7 @@ const getAllOrders= async (pageIndex: number)=>{
         </tr>
       </thead>
       <tbody>
+      {loading && <tr> <td colSpan={8}><div className="spinner text-center"></div></td> </tr> }
         {orders.map((order, key) => (
           <tr
             key={key}
