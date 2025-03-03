@@ -313,6 +313,7 @@ const AddPaymentNewModal: React.FC<AddPaymentModalProps> = ({
                       className="form-control m-select2"
                       id="PartyName"
                       name="PartyName"
+                      onChange={handleChange}
                     >
                       <option value="">Select Party</option>                      
                     </select>
@@ -328,6 +329,7 @@ const AddPaymentNewModal: React.FC<AddPaymentModalProps> = ({
                       className="form-control m-select2"
                       id="Sales"
                       name="Sales"
+                      onChange={handleChange}
                     >
                       <option value="">Select Sales</option>                      
                     </select>
@@ -343,6 +345,7 @@ const AddPaymentNewModal: React.FC<AddPaymentModalProps> = ({
                       className="form-control m-select2"
                       id="PaymentModeName"
                       name="PaymentModeName"
+                      onChange={handleChange}
                     >
                       <option value="">Payment Mode</option>                      
                     </select>

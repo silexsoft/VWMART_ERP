@@ -329,8 +329,13 @@ Order Invoice
           </table>
         </div>
 
-        <div className="footer">
+        <div className="text-left footer">
           <p>Customer Details</p>
+          <p>Address:</p>
+        </div>
+        <div className="divider"></div>
+        <div className="footer">
+          <p>Thank you for shopping with us</p>
         </div>
       </div>
 

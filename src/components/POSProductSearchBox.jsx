@@ -12,7 +12,7 @@ const POSProductSearchBox = ({ selectedProducts,setSelectedProducts }) =>
   const [searchTerm, setSearchTerm] = useState("");
   const [products, setProducts] = useState([]);
   const inputRef = useRef(null);
-
+  const resultRefs = useRef([]);
 
   useEffect(() =>
   {
@@ -50,7 +50,7 @@ const POSProductSearchBox = ({ selectedProducts,setSelectedProducts }) =>
 
   const addProduct = (product) =>
   {
-   console.log(selectedProducts);
+   //console.log(selectedProducts);
     getProductDetail(token,product.id,warehouseId).then((obj_response)=>{
       updateSpecificProduct(obj_response);
       product=obj_response;
@@ -131,7 +131,8 @@ const POSProductSearchBox = ({ selectedProducts,setSelectedProducts }) =>
   
   // After SKU Scan scanner fire tab event and this function called and add items to cart.
   const handleKeyDown = async (e) => {
-    if (e.key === "Enter" || e.key === "Tab") {
+   
+    if (e.key === "Enter" || e.key === "tab") {
       e.preventDefault();
       const results = await db.products
         .where("sku")
@@ -143,6 +144,35 @@ const POSProductSearchBox = ({ selectedProducts,setSelectedProducts }) =>
         e.target.value="";
       }
     }
+    
+  };
+
+  const handleKeyDownOnProduct = async (e,sku) => {
+    console.log("sku="+sku);
+    const focusableItems = resultRefs.current.filter((item) => item);
+    const currentIndex = focusableItems.indexOf(document.activeElement);
+    if(e.key === "tab")
+    {
+      e.preventDefault();
+      const nextIndex = e.shiftKey
+        ? (currentIndex - 1 + focusableItems.length) % focusableItems.length
+        : (currentIndex + 1) % focusableItems.length;
+      focusableItems[nextIndex]?.focus();
+    }
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const results = await db.products
+        .where("sku")
+        .equals(sku.trim())
+        .toArray();
+      if(results.length > 0)
+      {
+        addScannedProduct(results[0]);
+        // Return focus to search input
+        inputRef.current?.focus();
+      }
+    }
+    
   };
 
   return (
@@ -159,10 +189,13 @@ const POSProductSearchBox = ({ selectedProducts,setSelectedProducts }) =>
       <div className="mt-2">
         {products.length > 0 ? (
           <ul className="searchlistbox col-md-3">
-            {products.map((product) => (
+            {products.map((product,index) => (
               <li
+                tabIndex={0}
                 key={product.id}
+                ref={(el) => (resultRefs.current[index] = el)}
                 className="p-2 border-b cursor-pointer hover:bg-gray-200"
+                onKeyDown={(e)=> handleKeyDownOnProduct(e,product.sku)}
                 onClick={() => addProduct(product)}
               >
                 <strong>{product.name}</strong>

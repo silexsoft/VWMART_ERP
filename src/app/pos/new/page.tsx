@@ -775,7 +775,7 @@ const NewPosOrder = () => {
             ) : (
                 // Default Sales Screen
                 <div>
-                {loading && <Loader />}
+                
                     <div className="flex flex-col pos-left">
                         <div className="row">
                             <div className="col-md-4">
@@ -796,6 +796,7 @@ const NewPosOrder = () => {
                         <div className="row pos-left-middle">
                             <div className="col-12">
                                 <div className="border rounded bg-white">
+                                {loading &&<div className="fixed inset-0 flex items-center justify-center z-50"> <div className="spinner text-center">&nbsp;</div></div>}
                                     <table className="w-full border-collapse border carttable">
                                         <thead>
                                             <tr className="bg-black text-center text-white">
@@ -871,6 +872,7 @@ const NewPosOrder = () => {
                                                             /> */}
                                                                     <input
                                                                         type="number"
+                                                                        min={0}
                                                                         //value={discounts[product.id] || 0} // Use product.id instead of index
                                                                         value={product.use_percentage ? product.discount_percentage : product.discount_amount}
                                                                         onChange={(e) => handleDiscountChange(product,index, e.target.value)}
@@ -980,6 +982,7 @@ const NewPosOrder = () => {
                                                         name="round_off"
                                                         id="round_off"
                                                         placeholder="Roundoff"
+                                                        readOnly={true}
                                                         value={(roundOffValue(totalAmount) - totalAmount).toFixed(2)}
                                                         // onChange={handleRoundOffChange}
                                                         style={{ marginBottom: ".5rem" }}
