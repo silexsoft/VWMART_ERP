@@ -7,9 +7,10 @@ export const saveHoldBill = async (holdbills) =>
     {
         await db.holdbills.bulkPut(holdbills); // Save all holdbills
         console.log('Customer saved successfully!');
-    } catch (error)
+    } 
+    catch (error)
     {
-        console.error('Error saving holdbills:', error);
+        //console.error('Error saving holdbills:', error);
     }
 };
 

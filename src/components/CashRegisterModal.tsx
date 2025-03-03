@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Modal, Button, Form } from "react-bootstrap";
 import { useAuth } from "@/app/context/AuthContext";
-
+import { pOSCashRegisterCreate } from '@/utils/cashServices';
 interface CashRegisterModalProps {
   show: boolean;
   handleClose: () => void;
@@ -17,36 +17,39 @@ const CashRegisterNewModal: React.FC<CashRegisterModalProps> = ({
   handleClose,
 }) => {
   const [formData, setFormData] = useState({
+    Id:0,
     name: "",
     description: "",
-    OpeningCash: "",
-    CashPayment: "",
-    ChequePayment: "",
-    CardPayment: "",
-    BankTransfer: "",
+    OpeningCash: 0,
+    CashPayment: 0,
+    ChequePayment: 0,
+    CardPayment: 0,
+    BankTransfer: 0,
+    BankTransferAmount: 0,
     BankAccount:"",
-    UPIPayment: "",
-    WalletPayment: "",
-    SalesReturn: "",
-    Refund: "",
-    CreditApplied: "",
-    PayLater: "",
-    TotalSales: "",
-    Expense: "",
-    TotalPhysicalDrawer: "",
+    UPIPayment: 0,
+    WalletPayment: 0,
+    SalesReturn: 0,
+    Refund: 0,
+    CreditApplied: 0,
+    PayLater:0,
+    TotalSales: 0,
+    PurchasePayment:0,
+    Expense: 0,
+    CashFlow: 0,
+    TotalCashLeft: 0,
+    PhysicalDrawer: 0,
     ClosingNote: "",
-    Rs1: "",
-    Rs2: "",
-    Rs5: "",
-    Rs10: "",
-    Rs20: "",
-    Rs50: "",
-    Rs100: "",
-    Rs200: "",
-    Rs500: "",
-    BankTransferAmount: "",
-    CashFlow: "",
-    TotalCashLeft: "",
+    CashierID:0,
+    Rs1: 0,
+    Rs2: 0,
+    Rs5: 0,
+    Rs10: 0,
+    Rs20: 0,
+    Rs50: 0,
+    Rs100: 0,
+    Rs200: 0,
+    Rs500: 0
   });
 
   const [categories, setCategories] = useState<Category[]>([]);
@@ -113,6 +116,10 @@ const CashRegisterNewModal: React.FC<CashRegisterModalProps> = ({
       //location.reload();
       // Close the modal after successful submission
       //handleClose();
+
+      pOSCashRegisterCreate(token,formData).then((createResponse: any) => {
+        console.log(createResponse);
+      });
     } catch (error) {
       console.error("Error uploading image:", error);
     }
@@ -134,6 +141,7 @@ const CashRegisterNewModal: React.FC<CashRegisterModalProps> = ({
                   type="text"
                   name="OpeningCash"
                   value={formData.OpeningCash}
+                  onChange={handleInputChange}
                   readOnly
                 />
               </Form.Group>
@@ -144,6 +152,7 @@ const CashRegisterNewModal: React.FC<CashRegisterModalProps> = ({
                   type="text"
                   name="CashPayment"
                   value={formData.CashPayment}
+                  onChange={handleInputChange}
                   readOnly
                 />
               </Form.Group>
@@ -154,6 +163,7 @@ const CashRegisterNewModal: React.FC<CashRegisterModalProps> = ({
                   type="text"
                   name="ChequePayment"
                   value={formData.ChequePayment}
+                  onChange={handleInputChange}
                   readOnly
                 />
               </Form.Group>
@@ -164,6 +174,7 @@ const CashRegisterNewModal: React.FC<CashRegisterModalProps> = ({
                   type="text"
                   name="CardPayment"
                   value={formData.CardPayment}
+                  onChange={handleInputChange}
                   readOnly
                 />
               </Form.Group>
@@ -174,6 +185,7 @@ const CashRegisterNewModal: React.FC<CashRegisterModalProps> = ({
                   type="text"
                   name="BankTransfer"
                   value={formData.BankTransfer}
+                  onChange={handleInputChange}
                   readOnly
                 />
               </Form.Group>
@@ -184,6 +196,7 @@ const CashRegisterNewModal: React.FC<CashRegisterModalProps> = ({
                   type="text"
                   name="UPIPayment"
                   value={formData.UPIPayment}
+                  onChange={handleInputChange}
                   readOnly
                 />
               </Form.Group>
@@ -194,6 +207,7 @@ const CashRegisterNewModal: React.FC<CashRegisterModalProps> = ({
                   type="text"
                   name="WalletPayment"
                   value={formData.WalletPayment}
+                  onChange={handleInputChange}
                   readOnly
                 />
               </Form.Group>
@@ -204,6 +218,7 @@ const CashRegisterNewModal: React.FC<CashRegisterModalProps> = ({
                   type="text"
                   name="UPIPayment"
                   value={formData.UPIPayment}
+                  onChange={handleInputChange}
                   readOnly
                 />
               </Form.Group>
@@ -214,6 +229,7 @@ const CashRegisterNewModal: React.FC<CashRegisterModalProps> = ({
                   type="text"
                   name="SalesReturn"
                   value={formData.SalesReturn}
+                  onChange={handleInputChange}
                   readOnly
                 />
               </Form.Group>
@@ -224,6 +240,7 @@ const CashRegisterNewModal: React.FC<CashRegisterModalProps> = ({
                   type="text"
                   name="Refund"
                   value={formData.Refund}
+                  onChange={handleInputChange}
                   readOnly
                 />
               </Form.Group>
@@ -234,6 +251,7 @@ const CashRegisterNewModal: React.FC<CashRegisterModalProps> = ({
                   type="text"
                   name="CreditApplied"
                   value={formData.CreditApplied}
+                  onChange={handleInputChange}
                   readOnly
                 />
               </Form.Group>
@@ -244,6 +262,7 @@ const CashRegisterNewModal: React.FC<CashRegisterModalProps> = ({
                   type="text"
                   name="PayLater"
                   value={formData.PayLater}
+                  onChange={handleInputChange}
                   readOnly
                 />
               </Form.Group>
@@ -254,6 +273,7 @@ const CashRegisterNewModal: React.FC<CashRegisterModalProps> = ({
                   type="text"
                   name="Expense"
                   value={formData.Expense}
+                  onChange={handleInputChange}
                   readOnly
                 />
               </Form.Group>
@@ -264,6 +284,7 @@ const CashRegisterNewModal: React.FC<CashRegisterModalProps> = ({
                   type="text"
                   name="PurchasePayment"
                   value={formData.PayLater}
+                  onChange={handleInputChange}
                   readOnly
                 />
               </Form.Group>
@@ -274,6 +295,7 @@ const CashRegisterNewModal: React.FC<CashRegisterModalProps> = ({
                   type="text"
                   name="TotalSales"
                   value={formData.TotalSales}
+                  onChange={handleInputChange}
                   readOnly
                 />
               </Form.Group>
@@ -592,7 +614,7 @@ const CashRegisterNewModal: React.FC<CashRegisterModalProps> = ({
                 <Form.Control
                   type="text"
                   name="TotalPhysicalDrawer"
-                  value={formData.TotalPhysicalDrawer}
+                  value={formData.PhysicalDrawer}
                   onChange={handleInputChange}
                 />
               </Form.Group>

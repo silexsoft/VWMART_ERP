@@ -21,7 +21,7 @@ const OrderReceipt : React.FC<OrderReceiptModalProps> = ({
   const toWords = new ToWords();
   const [order, setOrder] = useState<any>({
           id: '',
-          order_total: 0,
+          OrderTotal: 0,
           order_status_id:'',
           payment_status_id:'',
           billing_first_name	:''
@@ -35,6 +35,7 @@ const OrderReceipt : React.FC<OrderReceiptModalProps> = ({
           quantity: number;
           discount_amount_excl_tax: number;
           discount_amount_incl_tax:number;
+          unit_price_excl_tax:number;
           product_name:string;
         }
         
@@ -44,48 +45,26 @@ const OrderReceipt : React.FC<OrderReceiptModalProps> = ({
      
   
   const loadItems=()=>{
-    handleClose();
+    handleClose();    
     if(orderDetail != undefined && orderDetail.id != undefined)
       {
         const fetchOrder = async () => {      
           try {
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_HOST}/api-backend/Order/GetById/${orderDetail?.id}`, {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_HOST}/api-frontend/Pos/GetOrderDetails/${orderDetail?.id}`, {
               method: 'GET',
               headers: {
                 accept: 'application/json',
                 Authorization:token ? `Bearer ${token}` : '', // Use your actual auth token
               },
             });
+            
             if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
             const data = await response.json();
-            //console.log("Fetched order:", data);
-            setOrder(data);
-         } catch (error) {
-            console.error("Failed to fetch order:", error);
-          } finally {
-            setIsLoading(false);
-          }
-        };
-  
-  
-        const fetchOrderItems = async () => {      
-          try {
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_HOST}/api-backend/OrderItem/GetOrderItems/${orderDetail?.id}?vendorId=0`, {
-              method: 'GET',
-              headers: {
-                accept: 'application/json',
-                Authorization:token ? `Bearer ${token}` : '', // Use your actual auth token
-              },
-            });
-            if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-            const data = await response.json();
-            console.log("Fetched order iitems:", JSON.stringify(data));
-             
-  
-  
+            
+            setOrder(data.order);
             setOrderItems(
-              Array.isArray(data)
-                ? data.map((orderItems: OrderItem) => ({
+              Array.isArray(data.orderItems)
+                ? data.orderItems.map((orderItems: OrderItem) => ({
                   id: orderItems.id,
                   product_image: orderItems.product_image,
                   price_incl_tax:orderItems.price_incl_tax,
@@ -94,24 +73,20 @@ const OrderReceipt : React.FC<OrderReceiptModalProps> = ({
                   quantity:orderItems.quantity,
                   discount_amount_excl_tax:orderItems.discount_amount_excl_tax,
                   discount_amount_incl_tax:orderItems.discount_amount_incl_tax,
+                  unit_price_excl_tax:orderItems.unit_price_excl_tax,
                   product_name:orderItems.product_name,
                   }))
                 : []
             );
-            
-            console.log("Fetched order iitems sss:", JSON.stringify(orderItems));
-           
             handlePrint();
             
          } catch (error) {
             console.error("Failed to fetch order:", error);
           } finally {
-            //setIsLoading(false);
+            setIsLoading(false);
           }
         };
-  
         fetchOrder();
-        fetchOrderItems();
       } 
     
   }
@@ -130,6 +105,7 @@ const OrderReceipt : React.FC<OrderReceiptModalProps> = ({
               width: 80mm;
               margin: 0;
               padding: 0;
+              font-weight:bold;
             }
             .invoice {
               padding: 10px;
@@ -235,13 +211,13 @@ Order Invoice
               <td><strong>Name:</strong></td>
               <td>{order.billing_first_name}</td>
               <td><strong>Date:</strong></td>
-              <td>{`${orderDetail?.created_on_utc ? format(new Date(orderDetail?.created_on_utc), "dd/MM/yyyy") : ""}`}</td>
+              <td>{`${order?.CreatedOnUtc ? format(new Date(order?.CreatedOnUtc), "dd/MM/yyyy") : ""}`}</td>
             </tr>
             <tr>
               <td><strong>Mobile:</strong></td>
               <td>{order.billing_phone_number	}</td>
               <td><strong>Time:</strong></td>
-              <td>{`${orderDetail?.created_on_utc ? format(new Date(orderDetail?.created_on_utc), "hh:mm a") : ""}`}</td>
+              <td>{`${order?.CreatedOnUtc ? format(new Date(order?.CreatedOnUtc), "hh:mm a") : ""}`}</td>
             </tr>
             </tbody>
           </table>
@@ -250,7 +226,7 @@ Order Invoice
          <tbody>
          <tr>
               <td style={{width:'8em'}}><strong>Invoice No.:</strong></td>
-              <td>{`ORD${orderDetail?.id}`}</td>
+              <td>{`ORD${order?.CustomOrderNumber}`}</td>
              
             </tr>
          </tbody>
@@ -270,7 +246,6 @@ Order Invoice
               <th>Net</th>
             </tr>
           </thead>
-         
           <tbody>
           {orderItems.map((order,index)=>(
              <tr key={index}>
@@ -291,7 +266,7 @@ Order Invoice
         <tbody>
           <tr>
             <td colSpan={3} className='text-center'><strong>Total:</strong></td>
-            <td colSpan={3} className='text-right'>{order.order_total}</td>
+            <td colSpan={3} className='text-right'>{order.OrderTotal}</td>
           </tr>
           <tr>
             <td colSpan={3} className='text-center'><strong>Round Off:</strong></td>
@@ -299,9 +274,9 @@ Order Invoice
           </tr>
           <tr>
             <td colSpan={3} className='text-center'><strong>
-              By UPI:
+              {order.PaymentMethodSystemName === "Payments.CashOnDelivery" ? "By Cash" : "By UPI"}:
               </strong></td>
-            <td colSpan={3} className='text-right'> {order.order_total}</td>
+            <td colSpan={3} className='text-right'> {order.OrderTotal}</td>
           </tr>
         </tbody>
         </table>
@@ -315,9 +290,15 @@ Order Invoice
         <div className="divider"></div>
 
         <div className="footer">
-          <p><strong>You Saved Rs.: 96.75</strong></p>
+          {order.OrderDiscount > 0 && 
+          <>
+          <p><strong>You Saved Rs.: {order.OrderDiscount}</strong></p>
+          <p>{toWords.convert(order.OrderDiscount, { currency: true })}</p>
+          </>
+          }
           
-          <p>{toWords.convert(order?.order_total, { currency: true })}</p>
+          
+          
           <p>Prices are inclusive of all taxes - Place of Supply: Uttar Pradesh</p>
         </div>
 
@@ -333,20 +314,17 @@ Order Invoice
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td>267.86</td>
-                <td>6.70</td>
-                <td>6.70</td>
-                <td>0.00</td>
-                <td>0.00</td>
-              </tr>
-              <tr>
-                <td>50.89</td>
-                <td>3.05</td>
-                <td>3.05</td>
-                <td>0.00</td>
-                <td>0.00</td>
-              </tr>
+            {orderItems.map((order,index)=>(
+             <tr key={index}>
+             <td>{`${order.unit_price_excl_tax}`}</td>
+             <td>{`${((order.unit_price_incl_tax - order.unit_price_excl_tax) / 2).toFixed(2) }`}</td>
+             <td>{`${((order.unit_price_incl_tax - order.unit_price_excl_tax) / 2).toFixed(2) }`}</td>
+             <td>0.00</td>
+             <td>0.00</td>
+           </tr>
+          ))}
+            
+            
             </tbody>
           </table>
         </div>
@@ -356,9 +334,9 @@ Order Invoice
         </div>
       </div>
 
-      <button onClick={handlePrint} className="print-button">
+      {/* <button onClick={handlePrint} className="print-button">
         Print Invoice
-      </button>
+      </button> */}
 
       <style jsx>{`
         .page {

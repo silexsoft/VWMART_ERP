@@ -126,7 +126,7 @@ const getAllOrders= async (pageIndex: number)=>{
         </tr>
       </thead>
       <tbody>
-      {loading && <tr> <td colSpan={8}><div className="spinner text-center"></div></td> </tr> }
+      {loading && <tr key={-1}> <td colSpan={8}><div className="spinner text-center">..</div></td> </tr> }
         {orders.map((order, key) => (
           <tr
             key={key}

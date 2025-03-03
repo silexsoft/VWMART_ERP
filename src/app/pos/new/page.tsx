@@ -15,6 +15,7 @@ import "react-toastify/dist/ReactToastify.css";
 import CashRegisterNewModal from "@/components/CashRegisterModal";
 import { AnyObject, object } from "yup";
 import AddPaymentNewModal from "@/components/AddPaymentModal";
+import Loader from "@/components/common/Loader";
 let debounceTimeout: NodeJS.Timeout;
 const NewPosOrder = () => {
     const { token, logout, warehouseId } = useAuth();
@@ -31,7 +32,7 @@ const NewPosOrder = () => {
     const [customerLastOrder, setCustomerLastOrder] = useState<AnyObject>();
     const [customers, setCustomers] = useState([]);//used for full custoner information
     const [isOpen, setIsOpen] = useState(false);
-
+    const [loading, setLoading] = useState(false);
     const [isCashRegisterModel, setIsCashRegisterModel] = useState(false);
     const [isPaymentRegisterModel, setIsPaymentRegisterModel] = useState(false);
 
@@ -323,6 +324,9 @@ const NewPosOrder = () => {
 
     /* This function is used to add hold bill to cart by id*/
     const shiftHoldBillToCart = async (CustomerId: any) => {
+        try {
+            setLoading(true);
+        
         const holdbillsResponse = await getHoldBillsById(CustomerId);
         setSelectedCustomer(CustomerId);
         getCustomerById(CustomerId).then((obj_cust) => {
@@ -355,6 +359,12 @@ const NewPosOrder = () => {
             })
 
         })
+        } catch (error) {
+                
+        }
+        finally {
+            setLoading(false); // Hide loading indicator
+          }
     }
 
     /*Trigger Calculation When selectedProducts Changes*/
@@ -395,6 +405,7 @@ const NewPosOrder = () => {
         let authToken = token;
         let customerid = 0;
         try {
+            setLoading(true);
             if (selectedProducts.length > 0) {
                 // If a customer is not selected, do a guest login and store the token
                 if (selectedCustomer == 0) {
@@ -489,12 +500,16 @@ const NewPosOrder = () => {
         } catch (error) {
             console.error("Error:", error);
         }
+        finally {
+            setLoading(false); // Hide loading indicator
+          }
     };
 
     /*Function used to create cash Order */
     const createCashOrder = async () => {
         let authToken = token;
         let customerid = 0;
+        setLoading(true);
         try {
             if (selectedProducts.length > 0) {
                 // If a customer is not selected, do a guest login and store the token
@@ -599,6 +614,9 @@ const NewPosOrder = () => {
                 autoClose: 5000
             });
         }
+        finally {
+            setLoading(false); // Hide loading indicator
+          }
     }
 
     /**
@@ -757,6 +775,7 @@ const NewPosOrder = () => {
             ) : (
                 // Default Sales Screen
                 <div>
+                {loading && <Loader />}
                     <div className="flex flex-col pos-left">
                         <div className="row">
                             <div className="col-md-4">
