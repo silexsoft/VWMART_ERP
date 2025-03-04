@@ -544,7 +544,7 @@ const NewPosOrder = () => {
                         UpdatedOnUtc: new Date().toISOString(),
                         WarehouseId: 5, // Adjust if needed
                         InStock: true,
-                        Hold: true,
+                        Hold: false,
                         Type: "Standard", // Adjust as needed
                         SalesManId: 101, // Replace with actual SalesManId if applicable
                         DiscountType: product.use_percentage ? "percentage" :"", // Use discountType from state
